@@ -111,7 +111,41 @@
     renderer.render(scene, camera);
   }
 
-  animate();
+  // Track mouse
+const mouse = new THREE.Vector2();
+const targetPosition = new THREE.Vector3();
+
+// Handle mouse move
+window.addEventListener('mousemove', (event) => {
+  // Convert mouse to normalized device coordinates (-1 to +1)
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+  // Use unproject to convert to 3D space at z = 0
+  const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+  vector.unproject(camera);
+  const dir = vector.sub(camera.position).normalize();
+  const distance = (0 - camera.position.z) / dir.z;
+  targetPosition.copy(camera.position).add(dir.multiplyScalar(distance));
+});
+
+// Animate loop with movement
+function animate(time) {
+  requestAnimationFrame(animate);
+
+  // HSL color shift
+  const hue = (time * 0.0002) % 1;
+  cube.material.color.setHSL(hue, 1, 0.5);
+
+  // Smoothly move cube toward mouse (lerp)
+  cube.position.lerp(targetPosition, 0.05);
+
+  // Rotation
+  cube.rotation.x += 0.01;
+  cube.rotation.y += 0.01;
+
+  renderer.render(scene, camera);
+}
 
   // Responsive resize
   window.addEventListener('resize', () => {
@@ -123,3 +157,4 @@
 
 </body>
 </html>
+
