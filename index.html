@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Better 3D Cube</title>
+  <title>Interactive 3D Cube</title>
 
-  <!-- ✅ Use Three.js v0.158.0 -->
+  <!-- Three.js v0.158.0 -->
   <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
 
   <style>
@@ -14,8 +14,9 @@
       padding: 0;
       height: 100%;
       overflow: hidden;
-      background: #000; /* fallback */
+      background: #000;
     }
+
     canvas {
       display: block;
     }
@@ -24,11 +25,16 @@
 <body>
 
 <script>
-  // Scene setup
+  // Scene
   const scene = new THREE.Scene();
 
   // Camera
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(
+    75,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
   camera.position.z = 5;
 
   // Renderer
@@ -36,7 +42,7 @@
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // 🌈 Gradient background via big plane
+  // 🌈 Gradient Background Plane
   const backgroundGeometry = new THREE.PlaneGeometry(100, 100);
   const backgroundMaterial = new THREE.MeshBasicMaterial({
     map: generateGradientTexture(),
@@ -60,8 +66,7 @@
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, 2, 2);
 
-    const texture = new THREE.CanvasTexture(canvas);
-    return texture;
+    return new THREE.CanvasTexture(canvas);
   }
 
   // Cube
@@ -74,7 +79,7 @@
   const cube = new THREE.Mesh(geometry, material);
   scene.add(cube);
 
-  // Lighting
+  // Lights
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
   scene.add(ambientLight);
 
@@ -82,27 +87,33 @@
   directionalLight.position.set(3, 5, 5);
   scene.add(directionalLight);
 
-  // Movement vars
-  let velocity = { x: 0.02, y: 0.015 };
-  let position = { x: 0, y: 0 };
+  // 🖱️ Mouse Interaction
+  const mouse = new THREE.Vector2();
+  const targetPosition = new THREE.Vector3();
 
-  // Animate
+  window.addEventListener('mousemove', (event) => {
+    // Normalized device coords
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Unproject to 3D world space
+    const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+    vector.unproject(camera);
+    const dir = vector.sub(camera.position).normalize();
+    const distance = -camera.position.z / dir.z;
+    targetPosition.copy(camera.position).add(dir.multiplyScalar(distance));
+  });
+
+  // 🌀 Animation Loop
   function animate(time) {
     requestAnimationFrame(animate);
 
-    // HSL color shift
+    // Color changes
     const hue = (time * 0.0002) % 1;
     cube.material.color.setHSL(hue, 1, 0.5);
 
-    // Bounce movement
-    position.x += velocity.x;
-    position.y += velocity.y;
-
-    if (position.x > 2 || position.x < -2) velocity.x *= -1;
-    if (position.y > 2 || position.y < -2) velocity.y *= -1;
-
-    cube.position.x = position.x;
-    cube.position.y = position.y;
+    // Move cube toward mouse
+    cube.position.lerp(targetPosition, 0.05);
 
     // Rotate cube
     cube.rotation.x += 0.01;
@@ -111,43 +122,9 @@
     renderer.render(scene, camera);
   }
 
-  // Track mouse
-const mouse = new THREE.Vector2();
-const targetPosition = new THREE.Vector3();
+  animate();
 
-// Handle mouse move
-window.addEventListener('mousemove', (event) => {
-  // Convert mouse to normalized device coordinates (-1 to +1)
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  // Use unproject to convert to 3D space at z = 0
-  const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
-  vector.unproject(camera);
-  const dir = vector.sub(camera.position).normalize();
-  const distance = (0 - camera.position.z) / dir.z;
-  targetPosition.copy(camera.position).add(dir.multiplyScalar(distance));
-});
-
-// Animate loop with movement
-function animate(time) {
-  requestAnimationFrame(animate);
-
-  // HSL color shift
-  const hue = (time * 0.0002) % 1;
-  cube.material.color.setHSL(hue, 1, 0.5);
-
-  // Smoothly move cube toward mouse (lerp)
-  cube.position.lerp(targetPosition, 0.05);
-
-  // Rotation
-  cube.rotation.x += 0.01;
-  cube.rotation.y += 0.01;
-
-  renderer.render(scene, camera);
-}
-
-  // Responsive resize
+  // 🔁 Resize handler
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -157,4 +134,3 @@ function animate(time) {
 
 </body>
 </html>
-
