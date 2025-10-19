@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My First Website</title>
-  
-  <link rel="stylesheet" href="style.css" />
+  <title>3D Cube with Lighting</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
+    }
+  </style>
+  <script src="https://unpkg.com/three@latest/build/three.min.js"></script>
 </head>
 <body>
-  <h1>Hello World</h1>
-  <h1>Welcome to My Website</h1>
-  <a href="https://www.is.fi/">Read Finish Fake News Here!</a>
-  <p>This is my first project on website</p>
-
 <script>
   // Scene and Camera
   const scene = new THREE.Scene();
@@ -89,6 +89,8 @@
 </script>
 </body>
 </html>
+
+
 
 
 
