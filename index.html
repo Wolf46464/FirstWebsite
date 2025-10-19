@@ -4,19 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>3D Cube with Lighting</title>
+
+  <!-- ✅ Three.js v0.158 from unpkg -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+
+  <!-- ✅ CSS Gradient Background -->
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       overflow: hidden;
-      background: linear-gradient(to bottom, #0a0a0a, #1a1a1a);
+      background: linear-gradient(to bottom right, #0a0a0a, #1a1a1a);
+    }
+    canvas {
+      display: block; /* removes scrollbars */
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 </head>
 <body>
+
 <script>
-  // Scene and Camera
+  // Scene setup
   const scene = new THREE.Scene();
+
+  // Camera
   const camera = new THREE.PerspectiveCamera(
     75,
     window.innerWidth / window.innerHeight,
@@ -26,26 +38,26 @@
   camera.position.z = 5;
 
   // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // alpha allows CSS background to show
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(window.devicePixelRatio);
   document.body.appendChild(renderer.domElement);
 
-  // Cube with MeshStandardMaterial
+  // Geometry + Material
   const geometry = new THREE.BoxGeometry(1, 1, 1);
   const material = new THREE.MeshStandardMaterial({
     color: 0xff0000,
-    metalness: 0.5,
-    roughness: 0.3,
+    metalness: 0.2,   // less shiny
+    roughness: 0.8    // more matte
   });
   const cube = new THREE.Mesh(geometry, material);
   scene.add(cube);
 
-  // Lighting
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
+  // Lights
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // soft light
   scene.add(ambientLight);
 
-  const pointLight = new THREE.PointLight(0xffffff, 1);
+  const pointLight = new THREE.PointLight(0xffffff, 0.8);
   pointLight.position.set(5, 5, 5);
   scene.add(pointLight);
 
@@ -57,21 +69,21 @@
   function animate(time) {
     requestAnimationFrame(animate);
 
-    // Animate color using HSL
-    const colorHue = (time * 0.0002) % 1;
-    cube.material.color.setHSL(colorHue, 1, 0.5);
+    // Color shift using HSL
+    const hue = (time * 0.0002) % 1;
+    cube.material.color.setHSL(hue, 1, 0.5);
 
-    // Bounce movement
+    // Bounce logic
     position.x += velocity.x;
     position.y += velocity.y;
 
-    if (position.x > 2 || position.x < -2) velocity.x = -velocity.x;
-    if (position.y > 2 || position.y < -2) velocity.y = -velocity.y;
+    if (position.x > 2 || position.x < -2) velocity.x *= -1;
+    if (position.y > 2 || position.y < -2) velocity.y *= -1;
 
     cube.position.x = position.x;
     cube.position.y = position.y;
 
-    // Rotate cube
+    // Rotation
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;
 
@@ -80,22 +92,14 @@
 
   animate();
 
-  // Make responsive
+  // Responsive resize
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
 </script>
+
 </body>
 </html>
-
-
-
-
-
-
-
-
-
 
