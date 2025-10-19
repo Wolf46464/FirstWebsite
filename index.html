@@ -13,8 +13,59 @@
   <h1>Welcome to My Website</h1>
   <a href="https://www.is.fi/">Read Finish Fake News Here!</a>
   <p>This is my first project on website</p>
+
+  <script>
+  // Setup scene
+  const scene = new THREE.Scene();
+
+  // Setup camera
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 5;
+
+  // Setup renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Create cube
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+  const cube = new THREE.Mesh(geometry, material);
+  scene.add(cube);
+
+  // Movement variables
+  let velocity = { x: 0.02, y: 0.015 };
+  let position = { x: 0, y: 0 };
+
+  // Animate
+  function animate(time) {
+    requestAnimationFrame(animate);
+
+    // Change color over time
+    const colorHue = (time * 0.0002) % 1;
+    cube.material.color.setHSL(colorHue, 1, 0.5);
+
+    // Move cube and bounce
+    position.x += velocity.x;
+    position.y += velocity.y;
+
+    if (position.x > 2 || position.x < -2) velocity.x = -velocity.x;
+    if (position.y > 2 || position.y < -2) velocity.y = -velocity.y;
+
+    cube.position.x = position.x;
+    cube.position.y = position.y;
+
+    cube.rotation.x += 0.01;
+    cube.rotation.y += 0.01;
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+</script>
 </body>
 </html>
+
 
 
 
