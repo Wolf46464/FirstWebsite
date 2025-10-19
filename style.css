@@ -12,9 +12,6 @@ h1 {
 p {
   color: #666;
 }
-body {
-  margin: 0;
-  overflow: hidden;
-  background-color: #000; /* makes the 3D look pop */
-}
+
+
 
