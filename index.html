@@ -3,22 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>3D Cube with Lighting</title>
+  <title>Better 3D Cube</title>
 
-  <!-- ✅ Three.js v0.158 from unpkg -->
+  <!-- ✅ Use Three.js v0.158.0 -->
   <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
 
-  <!-- ✅ CSS Gradient Background -->
   <style>
     html, body {
       margin: 0;
       padding: 0;
       height: 100%;
       overflow: hidden;
-      background: linear-gradient(to bottom right, #0a0a0a, #1a1a1a);
+      background: #000; /* fallback */
     }
     canvas {
-      display: block; /* removes scrollbars */
+      display: block;
     }
   </style>
 </head>
@@ -29,39 +28,61 @@
   const scene = new THREE.Scene();
 
   // Camera
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.z = 5;
 
   // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // alpha allows CSS background to show
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(window.devicePixelRatio);
   document.body.appendChild(renderer.domElement);
 
-  // Geometry + Material
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  // 🌈 Gradient background via big plane
+  const backgroundGeometry = new THREE.PlaneGeometry(100, 100);
+  const backgroundMaterial = new THREE.MeshBasicMaterial({
+    map: generateGradientTexture(),
+    depthWrite: false,
+    side: THREE.DoubleSide
+  });
+  const backgroundPlane = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
+  backgroundPlane.position.z = -10;
+  scene.add(backgroundPlane);
+
+  function generateGradientTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 2;
+    canvas.height = 2;
+    const ctx = canvas.getContext('2d');
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 2);
+    gradient.addColorStop(0, '#0a0a0a');
+    gradient.addColorStop(1, '#1a1a1a');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 2, 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    return texture;
+  }
+
+  // Cube
+  const geometry = new THREE.BoxGeometry();
   const material = new THREE.MeshStandardMaterial({
     color: 0xff0000,
-    metalness: 0.2,   // less shiny
-    roughness: 0.8    // more matte
+    roughness: 0.9,
+    metalness: 0.1
   });
   const cube = new THREE.Mesh(geometry, material);
   scene.add(cube);
 
-  // Lights
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); // soft light
+  // Lighting
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
   scene.add(ambientLight);
 
-  const pointLight = new THREE.PointLight(0xffffff, 0.8);
-  pointLight.position.set(5, 5, 5);
-  scene.add(pointLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+  directionalLight.position.set(3, 5, 5);
+  scene.add(directionalLight);
 
-  // Movement variables
+  // Movement vars
   let velocity = { x: 0.02, y: 0.015 };
   let position = { x: 0, y: 0 };
 
@@ -69,11 +90,11 @@
   function animate(time) {
     requestAnimationFrame(animate);
 
-    // Color shift using HSL
+    // HSL color shift
     const hue = (time * 0.0002) % 1;
     cube.material.color.setHSL(hue, 1, 0.5);
 
-    // Bounce logic
+    // Bounce movement
     position.x += velocity.x;
     position.y += velocity.y;
 
@@ -83,7 +104,7 @@
     cube.position.x = position.x;
     cube.position.y = position.y;
 
-    // Rotation
+    // Rotate cube
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;
 
@@ -102,4 +123,3 @@
 
 </body>
 </html>
-
