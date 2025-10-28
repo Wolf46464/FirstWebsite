@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Model Viewer</title>
+  <title>Penguin 3D Viewer</title>
 
   <!-- Three.js -->
   <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
-
   <!-- GLTF Loader -->
   <script src="https://unpkg.com/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
-
   <!-- Orbit Controls -->
   <script src="https://unpkg.com/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
 
@@ -18,13 +16,13 @@
     body {
       margin: 0;
       overflow: hidden;
-      background-color: #111;
+      background-color: #222;
     }
     #info {
       position: absolute;
       top: 10px;
       left: 10px;
-      color: #fff;
+      color: white;
       font-family: sans-serif;
       background: rgba(0, 0, 0, 0.5);
       padding: 6px 10px;
@@ -33,12 +31,12 @@
   </style>
 </head>
 <body>
-  <div id="info">Move mouse to rotate model • Scroll to zoom</div>
+  <div id="info">🐧 Move mouse to rotate the penguin • Scroll to zoom</div>
 
   <script>
-    // === Basic Setup ===
+    // === Basic setup ===
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x202020);
+    scene.background = new THREE.Color(0x333333);
 
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.set(0, 1.5, 3);
@@ -48,50 +46,58 @@
     renderer.outputEncoding = THREE.sRGBEncoding;
     document.body.appendChild(renderer.domElement);
 
-    // === Lights ===
-    const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+    // === Lighting ===
+    const ambient = new THREE.AmbientLight(0xffffff, 1.5);
     scene.add(ambient);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-    dirLight.position.set(5, 10, 7);
-    scene.add(dirLight);
+    const directional = new THREE.DirectionalLight(0xffffff, 2);
+    directional.position.set(5, 10, 5);
+    scene.add(directional);
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
+    scene.add(hemi);
 
     // === Controls ===
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // === Model Loading ===
+    // === Load model ===
     const loader = new THREE.GLTFLoader();
     loader.load(
-      './penguin.glb', // Make sure this matches your file name in GitHub!
+      './penguin.glb',
       (gltf) => {
         const model = gltf.scene;
-        model.scale.set(0.5, 0.5, 0.5);
+
+        // Scale up a bit — many glTF models are tiny
+        model.scale.set(2.5, 2.5, 2.5);
         model.position.set(0, -1, 0);
 
-        // Temporary override to make sure we can see it
+        // If it’s still too dark, override materials temporarily
         model.traverse((child) => {
           if (child.isMesh) {
-            child.material = new THREE.MeshStandardMaterial({ color: 0xdddddd });
+            child.material.side = THREE.DoubleSide;
+            if (child.material.color) {
+              child.material.color.convertSRGBToLinear();
+            }
           }
         });
 
         scene.add(model);
 
-        // Animation
+        // Animate
         function animate() {
           requestAnimationFrame(animate);
-          model.rotation.y += 0.005; // Slow spin
+          model.rotation.y += 0.003;
           controls.update();
           renderer.render(scene, camera);
         }
         animate();
       },
       undefined,
-      (error) => console.error('Error loading model:', error)
+      (error) => console.error('🚨 Error loading model:', error)
     );
 
-    // === Handle Window Resize ===
+    // === Handle window resize ===
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
