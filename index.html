@@ -1,136 +1,181 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Interactive 3D Cube</title>
-
-  <!-- Three.js v0.158.0 -->
-  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
-
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GLB viewer - mouse follow</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-      background: #000;
-    }
-
-    canvas {
-      display: block;
-    }
+    html,body { height:100%; margin:0; background:#111; overflow:hidden; }
+    #container { width:100%; height:100%; }
+    /* optional info text */
+    .hint { position:fixed; left:12px; top:12px; color:#ddd; font-family:Arial; font-size:13px; z-index:10; }
   </style>
 </head>
 <body>
+  <div id="container"></div>
+  <div class="hint">Move mouse to rotate model • Touch to drag</div>
 
-<script>
-  // Scene
+  <!-- Three.js (non-module build) -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+
+  <!-- Use the non-module examples build that uses global THREE -->
+  <script src="https://unpkg.com/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://unpkg.com/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+
+  <script>
+  // -----------------------
+  // Config
+  // -----------------------
+  const MODEL_URL = './penguin.glb'; // <--- put your model.glb here (same folder as index.html)
+  const container = document.getElementById('container');
+
+  // -----------------------
+  // Scene / camera / renderer
+  // -----------------------
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111111);
 
-  // Camera
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.position.z = 5;
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.set(0, 1.2, 3.0);
 
-  // Renderer
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+  container.appendChild(renderer.domElement);
 
-  // 🌈 Gradient Background Plane
-  const backgroundGeometry = new THREE.PlaneGeometry(100, 100);
-  const backgroundMaterial = new THREE.MeshBasicMaterial({
-    map: generateGradientTexture(),
-    depthWrite: false,
-    side: THREE.DoubleSide
+  // -----------------------
+  // Lights
+  // -----------------------
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+  hemi.position.set(0, 1, 0);
+  scene.add(hemi);
+
+  const dir = new THREE.DirectionalLight(0xffffff, 1.0);
+  dir.position.set(5, 10, 7);
+  dir.castShadow = true;
+  scene.add(dir);
+
+  // -----------------------
+  // Controls (optional, toggle with right mouse)
+  // -----------------------
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enablePan = false;
+  controls.enableZoom = true;
+  controls.enableRotate = false; // we will handle rotation with mouse
+  controls.target.set(0, 1, 0);
+
+  // -----------------------
+  // Model container (so we rotate pivot cleanly)
+  // -----------------------
+  const modelGroup = new THREE.Group();
+  scene.add(modelGroup);
+
+  let model = null;
+  const loader = new THREE.GLTFLoader();
+
+  loader.load(MODEL_URL, (gltf) => {
+    model = gltf.scene;
+    // center and scale model nicely:
+    const bbox = new THREE.Box3().setFromObject(model);
+    const size = bbox.getSize(new THREE.Vector3());
+    const maxSide = Math.max(size.x, size.y, size.z);
+    const desiredSize = 1.5; // scale to fit scene
+    const scale = desiredSize / maxSide;
+    model.scale.setScalar(scale);
+
+    // move pivot to center bottom (optional)
+    bbox.setFromObject(model);
+    const center = bbox.getCenter(new THREE.Vector3());
+    const minY = bbox.min.y;
+    model.position.x = -center.x;
+    model.position.z = -center.z;
+    model.position.y = -minY; // sit on ground
+
+    modelGroup.add(model);
+
+    // simple initial rotation
+    modelGroup.rotation.y = Math.PI * 0.1;
+  }, undefined, (err) => {
+    console.error('Error loading model:', err);
   });
-  const backgroundPlane = new THREE.Mesh(backgroundGeometry, backgroundMaterial);
-  backgroundPlane.position.z = -10;
-  scene.add(backgroundPlane);
 
-  function generateGradientTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2;
-    canvas.height = 2;
-    const ctx = canvas.getContext('2d');
+  // -----------------------
+  // Mouse tracking -> desired rotation
+  // -----------------------
+  let pointer = { x: 0, y: 0 };
+  let targetRot = { x: 0, y: 0 }; // radians
+  const rotLimitX = 0.35; // up/down tilt
+  const rotLimitY = 0.9;  // left/right max rotation
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 2);
-    gradient.addColorStop(0, '#0a0a0a');
-    gradient.addColorStop(1, '#1a1a1a');
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 2, 2);
-
-    return new THREE.CanvasTexture(canvas);
+  function updatePointerClient(clientX, clientY) {
+    // normalized screen coords -1..1
+    const nx = (clientX / window.innerWidth) * 2 - 1;
+    const ny = -((clientY / window.innerHeight) * 2 - 1);
+    pointer.x = nx;
+    pointer.y = ny;
+    // map to rotation targets
+    targetRot.y = -pointer.x * rotLimitY;      // left/right
+    targetRot.x = pointer.y * rotLimitX;       // up/down
   }
 
-  // Cube
-  const geometry = new THREE.BoxGeometry();
-  const material = new THREE.MeshStandardMaterial({
-    color: 0xff0000,
-    roughness: 0.9,
-    metalness: 0.1
-  });
-  const cube = new THREE.Mesh(geometry, material);
-  scene.add(cube);
+  // mouse move
+  window.addEventListener('mousemove', (e) => {
+    updatePointerClient(e.clientX, e.clientY);
+  }, { passive: true });
 
-  // Lights
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
-  scene.add(ambientLight);
+  // touch support
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches && e.touches.length) {
+      updatePointerClient(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  }, { passive: true });
 
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
-  directionalLight.position.set(3, 5, 5);
-  scene.add(directionalLight);
-
-  // 🖱️ Mouse Interaction
-  const mouse = new THREE.Vector2();
-  const targetPosition = new THREE.Vector3();
-
-  window.addEventListener('mousemove', (event) => {
-    // Normalized device coords
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    // Unproject to 3D world space
-    const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
-    vector.unproject(camera);
-    const dir = vector.sub(camera.position).normalize();
-    const distance = -camera.position.z / dir.z;
-    targetPosition.copy(camera.position).add(dir.multiplyScalar(distance));
+  // optional: click+drag override
+  let dragging = false;
+  let prevX = 0;
+  window.addEventListener('pointerdown', (e) => { dragging = true; prevX = e.clientX; }, false);
+  window.addEventListener('pointerup', () => dragging = false, false);
+  window.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - prevX;
+    prevX = e.clientX;
+    targetRot.y += dx * 0.002; // small manual rotation on drag
   });
 
-  // 🌀 Animation Loop
-  function animate(time) {
+  // -----------------------
+  // Animation loop
+  // -----------------------
+  const ease = (a, b, t) => a + (b - a) * (1 - Math.exp(-4 * t)); // smoothing helper
+  let last = performance.now();
+  function animate() {
     requestAnimationFrame(animate);
+    const now = performance.now();
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
 
-    // Color changes
-    const hue = (time * 0.0002) % 1;
-    cube.material.color.setHSL(hue, 1, 0.5);
+    // smooth lerp the rotation towards target
+    if (modelGroup) {
+      // simple damped lerp
+      modelGroup.rotation.x += (targetRot.x - modelGroup.rotation.x) * (8 * dt);
+      modelGroup.rotation.y += (targetRot.y - modelGroup.rotation.y) * (8 * dt);
+    }
 
-    // Move cube toward mouse
-    cube.position.lerp(targetPosition, 0.05);
-
-    // Rotate cube
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
-
+    controls.update();
     renderer.render(scene, camera);
   }
-
   animate();
 
-  // 🔁 Resize handler
+  // -----------------------
+  // Handle resize
+  // -----------------------
   window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const w = window.innerWidth, h = window.innerHeight;
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(w, h);
   });
-</script>
-
+  </script>
 </body>
 </html>
+
+
