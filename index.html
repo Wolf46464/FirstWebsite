@@ -79,7 +79,7 @@
     const bbox = new THREE.Box3().setFromObject(model);
     const size = bbox.getSize(new THREE.Vector3());
     const maxSide = Math.max(size.x, size.y, size.z);
-    const desiredSize = 1.5; // scale to fit scene
+    const desiredSize = 0.2; // scale to fit scene
     const scale = desiredSize / maxSide;
     model.scale.setScalar(scale);
 
@@ -177,5 +177,6 @@
   </script>
 </body>
 </html>
+
 
 
