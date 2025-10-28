@@ -67,7 +67,7 @@
     manager.onError = (url) => log('Error loading:', url);
 
     const loader = new GLTFLoader(manager);
-    const glbPath = './penguin.glb'; // must match exact name & case
+    const glbPath = 'penguin.glb'; // must match exact name & case
 
     // Utility: check if model is inside camera frustum (approx)
     function isModelVisible(obj, cam) {
@@ -181,4 +181,5 @@
   -->
 </body>
 </html>
+
 
