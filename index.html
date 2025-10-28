@@ -3,30 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Penguin 3D Viewer 3000 (module)</title>
+  <title>Penguin 3D Viewer (module)</title>
   <style>
     body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; }
-    #info { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding:6px 10px; border-radius:6px; z-index:2; }
-    #log { position: absolute; bottom: 10px; left:10px; color:#ddd; background: rgba(0,0,0,0.5); padding:6px 10px; border-radius:6px; font-size:12px; max-width: 50%; z-index:2; white-space: pre-wrap;}
+    #info { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.6); padding:6px 10px; border-radius:6px; z-index:2; }
+    #log { position: absolute; bottom: 10px; left:10px; color:#ddd; background: rgba(0,0,0,0.6); padding:6px 10px; border-radius:6px; font-size:12px; max-width: 60%; z-index:2; white-space: pre-wrap; }
     canvas { display:block; }
   </style>
 </head>
 <body>
-  <div id="info">🐧 Move mouse to rotate • Scroll to zoom and try to find penguin</div>
+  <div id="info">🐧 Move mouse to rotate • Scroll to zoom</div>
   <div id="log"></div>
 
   <script type="module">
+    // Use full URLs for ES module imports (no bare specifiers like "three")
     import * as THREE from 'https://unpkg.com/three@0.158.0/build/three.module.js';
     import { OrbitControls } from 'https://unpkg.com/three@0.158.0/examples/jsm/controls/OrbitControls.js';
     import { GLTFLoader } from 'https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js';
 
     const logEl = document.getElementById('log');
-    const log = (...args) => { console.log(...args); logEl.textContent = args.join(' ') + '\n' + logEl.textContent; };
-
-    if (location.protocol === 'file:') {
-      log('⚠️ Serving files via file:// — some browsers block loading .glb. Use a local HTTP server (see README).');
+    function log(...args) {
+      console.log(...args);
+      logEl.textContent = args.map(a => (typeof a === 'object' ? JSON.stringify(a) : String(a))).join(' ') + '\n' + logEl.textContent;
     }
 
+    if (location.protocol === 'file:') {
+      log('⚠️ Running from file:// — some browsers block loading .glb. Use a local HTTP server (see bottom).');
+    }
+
+    // Scene, camera, renderer
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x333333);
 
@@ -34,27 +39,27 @@
     camera.position.set(0, 1.5, 3);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(innerWidth, innerHeight);
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    // updated API (replaces outputEncoding)
+    renderer.setSize(innerWidth, innerHeight);
+    // new API (replaces outputEncoding)
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     document.body.appendChild(renderer.domElement);
 
-    // lights
+    // Lights
     const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0); scene.add(hemi);
     const dir = new THREE.DirectionalLight(0xffffff, 1.5); dir.position.set(5,10,5); scene.add(dir);
     const ambient = new THREE.AmbientLight(0xffffff, 0.2); scene.add(ambient);
 
-    // helpers to verify scene orientation and camera
+    // Helpers
     const grid = new THREE.GridHelper(10, 10, 0x444444, 0x222222); grid.position.y = -1; scene.add(grid);
     scene.add(new THREE.AxesHelper(1.5));
 
-    // controls
+    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.target.set(0,0,0);
 
-    // loader (with manager & logs)
+    // Loader with logging
     const manager = new THREE.LoadingManager();
     manager.onStart = () => log('Loading started...');
     manager.onLoad = () => log('All resources loaded.');
@@ -62,48 +67,78 @@
     manager.onError = (url) => log('Error loading:', url);
 
     const loader = new GLTFLoader(manager);
-    const path = './penguin.glb'; // ensure exact file name & case
+    const glbPath = './penguin.glb'; // must match exact name & case
 
-    loader.load(path,
+    // Utility: check if model is inside camera frustum (approx)
+    function isModelVisible(obj, cam) {
+      const box = new THREE.Box3().setFromObject(obj);
+      if (box.isEmpty()) {
+        log('isModelVisible: bounding box is empty');
+        return false;
+      }
+      cam.updateMatrixWorld(true);
+      const projScreenMatrix = new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+      const frustum = new THREE.Frustum().setFromProjectionMatrix(projScreenMatrix);
+      const visible = frustum.intersectsBox(box);
+      log('isModelVisible: bbox', box.min.toArray(), box.max.toArray(), '=>', visible);
+      return visible;
+    }
+
+    loader.load(
+      glbPath,
       (gltf) => {
-        log('Model loaded:', path);
-        const model = gltf.scene || gltf.scenes[0];
-        if (!model) { log('No scene in glTF'); return; }
+        log('Model loaded callback:', glbPath);
+        const model = gltf.scene || gltf.scenes && gltf.scenes[0];
+        if (!model) { log('No scene found in GLTF'); return; }
 
+        // Add to scene
         scene.add(model);
 
-        // center & fit camera to model
+        // Compute bounds & center
         const box = new THREE.Box3().setFromObject(model);
         if (!box.isEmpty()) {
           const size = box.getSize(new THREE.Vector3());
           const center = box.getCenter(new THREE.Vector3());
-          // reposition model so it's centered at origin
+          log('Model bbox size:', size.x.toFixed(3), size.y.toFixed(3), size.z.toFixed(3), 'center:', center.toArray());
+
+          // Recenter model so center becomes origin (optional)
           model.position.x += (model.position.x - center.x);
           model.position.y += (model.position.y - center.y);
           model.position.z += (model.position.z - center.z);
 
+          // Fit camera to model
           const maxDim = Math.max(size.x, size.y, size.z);
           const fov = camera.fov * Math.PI / 180;
           let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-          cameraZ *= 1.5;
+          cameraZ *= 1.5; // padding
           camera.position.set(center.x, center.y + maxDim * 0.2, center.z + cameraZ);
           controls.target.copy(center);
-          log('Model size:', size.x.toFixed(2), size.y.toFixed(2), size.z.toFixed(2));
+          controls.update();
+          log('Camera moved to', camera.position.toArray(), 'controls target', controls.target.toArray());
         } else {
-          log('Warning: empty bounding box.');
+          log('Warning: bounding box empty after load. Model might be invisible or not composed of meshes.');
         }
 
-        // If mesh has no material, give a simple one; otherwise keep original (textured) materials.
+        // Ensure meshes have materials (do not replace textures)
         model.traverse((c) => {
           if (c.isMesh) {
             if (!c.material) {
               c.material = new THREE.MeshStandardMaterial({ color: 0xdddddd });
+              log('Assigned fallback material to a mesh');
             }
             c.castShadow = c.receiveShadow = true;
           }
         });
 
-        // animate
+        // Check visibility immediately
+        const visible = isModelVisible(model, camera);
+        if (!visible) {
+          log('Model is not in camera frustum. Try rotating/zooming or check model origin/scale.');
+        } else {
+          log('Model appears inside camera frustum.');
+        }
+
+        // Simple rotation + render loop
         (function animate() {
           requestAnimationFrame(animate);
           model.rotation.y += 0.003;
@@ -111,20 +146,38 @@
           renderer.render(scene, camera);
         })();
       },
-      (xhr) => { if (xhr.total) log(`GLTFLoader progress ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`); },
-      (err) => { log('🚨 Error loading model:', err && err.message ? err.message : err); console.error(err); }
+      (xhr) => {
+        if (xhr.total) {
+          log('GLTFLoader progress:', ((xhr.loaded / xhr.total) * 100).toFixed(1) + '%');
+        } else {
+          log('GLTFLoader received', xhr.loaded, 'bytes (total unknown)');
+        }
+      },
+      (err) => {
+        log('🚨 Error loading model:', err && err.message ? err.message : err);
+        console.error(err);
+      }
     );
 
+    // Resize
     window.addEventListener('resize', () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
     });
 
-    log('If you still see nothing:');
-    log('- Make sure penguin.glb exists in the same folder and the name/case is exact.');
-    log('- Use a local HTTP server (python -m http.server 8000) and open http://localhost:8000/');
-    log('- Inspect DevTools Network tab for 404/CORS or DevTools Console for errors.');
+    // Quick troubleshooting hints
+    log('Hints:');
+    log('- Filename must be EXACT (penguin.glb) and in same folder as index.html.');
+    log('- Serve via HTTP (python -m http.server 8000) and open http://localhost:8000/');
+    log('- Open DevTools (F12) and check Network for penguin.glb (404/CORS) and Console for errors.');
   </script>
+
+  <!--
+    Local server examples:
+      Python 3:    python -m http.server 8000
+      Node (npm):  npx http-server -p 8000
+      VSCode:      Use Live Server extension
+  -->
 </body>
 </html>
