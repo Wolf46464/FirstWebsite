@@ -1,198 +1,102 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>GLB viewer - mouse follow</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Model Viewer</title>
+
+  <!-- Three.js -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+
+  <!-- GLTF Loader -->
+  <script src="https://unpkg.com/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
+
+  <!-- Orbit Controls -->
+  <script src="https://unpkg.com/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+
   <style>
-    html,body { height:100%; margin:0; background:#111; overflow:hidden; }
-    #container { width:100%; height:100%; }
-    /* optional info text */
-    .hint { position:fixed; left:12px; top:12px; color:#ddd; font-family:Arial; font-size:13px; z-index:10; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #111;
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #fff;
+      font-family: sans-serif;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
-  <div id="container"></div>
-  <div class="hint">Move mouse to rotate model • Touch to drag Update 2</div>
-
-  <!-- Three.js (non-module build) -->
-  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
-
-  <!-- Use the non-module examples build that uses global THREE -->
-  <script src="https://unpkg.com/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
-  <script src="https://unpkg.com/three@0.158.0/examples/js/controls/OrbitControls.js"></script>
+  <div id="info">Move mouse to rotate model • Scroll to zoom</div>
 
   <script>
-  // -----------------------
-  // Config
-  // -----------------------
-  const MODEL_URL = './penguin.glb'; // <--- put your model.glb here (same folder as index.html)
-  const container = document.getElementById('container');
+    // === Basic Setup ===
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x202020);
 
-  // -----------------------
-  // Scene / camera / renderer
-  // -----------------------
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x111111);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 1.5, 3);
 
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 1.2, 3.0);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    document.body.appendChild(renderer.domElement);
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  container.appendChild(renderer.domElement);
+    // === Lights ===
+    const ambient = new THREE.AmbientLight(0xffffff, 1.2);
+    scene.add(ambient);
 
-  // -----------------------
-  // Lights
-  // -----------------------
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
-  hemi.position.set(0, 1, 0);
-  scene.add(hemi);
-    
-  // Add ambient light
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-  scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+    dirLight.position.set(5, 10, 7);
+    scene.add(dirLight);
 
-  // Add directional light (like a sun)
-  const dirLight = new THREE.DirectionalLight(0xffffff, 2);
-  dirLight.position.set(5, 10, 7);
-  scene.add(dirLight);
+    // === Controls ===
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
 
-  const helper = new THREE.AxesHelper(5);
-  scene.add(helper);  
+    // === Model Loading ===
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+      './penguin.glb', // Make sure this matches your file name in GitHub!
+      (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(0.5, 0.5, 0.5);
+        model.position.set(0, -1, 0);
 
+        // Temporary override to make sure we can see it
+        model.traverse((child) => {
+          if (child.isMesh) {
+            child.material = new THREE.MeshStandardMaterial({ color: 0xdddddd });
+          }
+        });
 
-  const dir = new THREE.DirectionalLight(0xffffff, 1.0);
-  dir.position.set(5, 10, 7);
-  dir.castShadow = true;
-  scene.add(dir);
+        scene.add(model);
 
-  // -----------------------
-  // Controls (optional, toggle with right mouse)
-  // -----------------------
-  const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.enablePan = false;
-  controls.enableZoom = true;
-  controls.enableRotate = false; // we will handle rotation with mouse
-  controls.target.set(0, 1, 0);
+        // Animation
+        function animate() {
+          requestAnimationFrame(animate);
+          model.rotation.y += 0.005; // Slow spin
+          controls.update();
+          renderer.render(scene, camera);
+        }
+        animate();
+      },
+      undefined,
+      (error) => console.error('Error loading model:', error)
+    );
 
-  // -----------------------
-  // Model container (so we rotate pivot cleanly)
-  // -----------------------
-  const modelGroup = new THREE.Group();
-  scene.add(modelGroup);
-
-  let model = null;
-  const loader = new THREE.GLTFLoader();
-
-  loader.load(MODEL_URL, (gltf) => {
-    model = gltf.scene;
-    // center and scale model nicely:
-    const bbox = new THREE.Box3().setFromObject(model);
-    const size = bbox.getSize(new THREE.Vector3());
-    const maxSide = Math.max(size.x, size.y, size.z);
-    const desiredSize = 0.2; // scale to fit scene
-    const scale = desiredSize / maxSide;
-    model.scale.setScalar(scale);
-
-    // move pivot to center bottom (optional)
-    bbox.setFromObject(model);
-    const center = bbox.getCenter(new THREE.Vector3());
-    const minY = bbox.min.y;
-    model.position.x = -center.x;
-    model.position.z = -center.z;
-    model.position.y = -minY; // sit on ground
-
-    modelGroup.add(model);
-
-    // simple initial rotation
-    modelGroup.rotation.y = Math.PI * 0.1;
-  }, undefined, (err) => {
-    console.error('Error loading model:', err);
-  });
-
-  // -----------------------
-  // Mouse tracking -> desired rotation
-  // -----------------------
-  let pointer = { x: 0, y: 0 };
-  let targetRot = { x: 0, y: 0 }; // radians
-  const rotLimitX = 0.35; // up/down tilt
-  const rotLimitY = 0.9;  // left/right max rotation
-
-  function updatePointerClient(clientX, clientY) {
-    // normalized screen coords -1..1
-    const nx = (clientX / window.innerWidth) * 2 - 1;
-    const ny = -((clientY / window.innerHeight) * 2 - 1);
-    pointer.x = nx;
-    pointer.y = ny;
-    // map to rotation targets
-    targetRot.y = -pointer.x * rotLimitY;      // left/right
-    targetRot.x = pointer.y * rotLimitX;       // up/down
-  }
-
-  // mouse move
-  window.addEventListener('mousemove', (e) => {
-    updatePointerClient(e.clientX, e.clientY);
-  }, { passive: true });
-
-  // touch support
-  window.addEventListener('touchmove', (e) => {
-    if (e.touches && e.touches.length) {
-      updatePointerClient(e.touches[0].clientX, e.touches[0].clientY);
-    }
-  }, { passive: true });
-
-  // optional: click+drag override
-  let dragging = false;
-  let prevX = 0;
-  window.addEventListener('pointerdown', (e) => { dragging = true; prevX = e.clientX; }, false);
-  window.addEventListener('pointerup', () => dragging = false, false);
-  window.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - prevX;
-    prevX = e.clientX;
-    targetRot.y += dx * 0.002; // small manual rotation on drag
-  });
-
-  // -----------------------
-  // Animation loop
-  // -----------------------
-  const ease = (a, b, t) => a + (b - a) * (1 - Math.exp(-4 * t)); // smoothing helper
-  let last = performance.now();
-  function animate() {
-    requestAnimationFrame(animate);
-    const now = performance.now();
-    const dt = Math.min((now - last) / 1000, 0.05);
-    last = now;
-
-    // smooth lerp the rotation towards target
-    if (modelGroup) {
-      // simple damped lerp
-      modelGroup.rotation.x += (targetRot.x - modelGroup.rotation.x) * (8 * dt);
-      modelGroup.rotation.y += (targetRot.y - modelGroup.rotation.y) * (8 * dt);
-    }
-
-    controls.update();
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  // -----------------------
-  // Handle resize
-  // -----------------------
-  window.addEventListener('resize', () => {
-    const w = window.innerWidth, h = window.innerHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
-  });
+    // === Handle Window Resize ===
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
   </script>
 </body>
 </html>
-
-
-
-
-
-
