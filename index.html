@@ -49,11 +49,11 @@ scene.add(placeholder);
 // GLTF loader (with optional Draco)
 const loader = new GLTFLoader();
 const dracoLoader = new DRACOLoader();
-// If your GLB is DRACO-compressed, uncomment the next line (decoder hosted by Google):
+// If your GLB is DRACO-compressed, keep this; otherwise it's harmless
 dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
 loader.setDRACOLoader(dracoLoader);
 
-// Load model
+// Load model (make sure penguin.glb is in the same folder as index.html)
 loader.load(
   './penguin.glb',
   (gltf) => {
@@ -63,48 +63,38 @@ loader.load(
       if (n.isMesh) {
         n.castShadow = true;
         n.receiveShadow = true;
-        // fix texture encoding if present
         if (n.material) {
           if (n.material.map) n.material.map.encoding = THREE.sRGBEncoding;
-          // some glTF have materials as an array (rare), handle that:
           if (Array.isArray(n.material)) {
-            n.material.forEach((m) => {
-              if (m.map) m.map.encoding = THREE.sRGBEncoding;
-            });
+            n.material.forEach((m) => { if (m.map) m.map.encoding = THREE.sRGBEncoding; });
           }
           n.material.needsUpdate = true;
         }
       }
     });
 
-    // Add to scene (replace placeholder)
     scene.add(model);
     scene.remove(placeholder);
 
-    // Compute bounding box and fit camera + controls target
+    // Fit camera to model
     const box = new THREE.Box3().setFromObject(model);
     if (!box.isEmpty()) {
       const size = box.getSize(new THREE.Vector3());
       const center = box.getCenter(new THREE.Vector3());
-
-      // Put camera at a distance that fits the model
       const maxDim = Math.max(size.x, size.y, size.z);
       const fov = camera.fov * (Math.PI / 180);
       let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-      cameraZ *= 1.6; // factor to give padding
-
-      // Direction from center to current camera position (preserve rough angle)
+      cameraZ *= 1.6;
       const dirVec = new THREE.Vector3(1, 0.7, 1).normalize();
       camera.position.copy(center).add(dirVec.multiplyScalar(cameraZ));
       camera.near = Math.max(0.01, maxDim / 100);
       camera.far = Math.max(1000, cameraZ * 10);
       camera.updateProjectionMatrix();
-
       controls.target.copy(center);
       controls.update();
     }
 
-    // Optional: log materials for debugging
+    // Debug materials
     model.traverse((n) => { if (n.isMesh) console.log(n.material); });
   },
   (xhr) => {
