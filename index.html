@@ -11,25 +11,65 @@
 
 <script type="module">
   import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+  import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
+  // SCENE
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x444444);
+  scene.background = new THREE.Color(0x87ceeb);
 
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
-  camera.position.z = 3;
+  // CAMERA
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    100
+  );
+  camera.position.set(0, 1.5, 3);
 
+  // RENDERER
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  const cube = new THREE.Mesh(
-    new THREE.BoxGeometry(),
-    new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-  );
-  scene.add(cube);
+  // LIGHTS (REQUIRED)
+  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 
-  renderer.render(scene, camera);
+  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+  dirLight.position.set(5, 5, 5);
+  scene.add(dirLight);
+
+  // LOAD PENGUIN
+  const loader = new GLTFLoader();
+  loader.load(
+    './penguin.glb',
+    (gltf) => {
+      const penguin = gltf.scene;
+      penguin.scale.set(1, 1, 1); // try 0.5 or 2 if needed
+      scene.add(penguin);
+      console.log('Penguin loaded');
+    },
+    undefined,
+    (err) => {
+      console.error(err);
+    }
+  );
+
+  // ANIMATE
+  function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // RESIZE
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
 </script>
+
 
 </body>
 </html>
+
