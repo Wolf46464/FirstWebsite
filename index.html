@@ -29,19 +29,24 @@
 
 <header>
   <h1>My 3D City Project</h1>
-  <p>Edit this text later — login, menu, etcaaaaaaaaaaaaa.</p>
+  <p>Edit this text later — login, menu, etc.</p>
 </header>
 
 <script type="module">
-  import * as THREE from 'https://cdn.skypack.dev/three@0.160.0';
-  import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+  import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+  import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
   // SCENE
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87ceeb);
 
   // CAMERA
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    100
+  );
   camera.position.set(0, 1.5, 4);
 
   // RENDERER
@@ -51,6 +56,7 @@
 
   // LIGHTS
   scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
   const dirLight = new THREE.DirectionalLight(0xffffff, 1);
   dirLight.position.set(5, 10, 5);
   scene.add(dirLight);
@@ -62,15 +68,19 @@
   );
   scene.add(cube);
 
-  // OPTIONAL: LOAD GLB
+  // LOAD GLB (OPTIONAL – UNCOMMENT AFTER CONFIRMING CUBE)
   /*
   const loader = new GLTFLoader();
   loader.load('./penguin.glb', (gltf) => {
-    scene.add(gltf.scene);
+    const model = gltf.scene;
+    model.scale.set(1, 1, 1);
+    model.position.y = -0.5;
+    scene.add(model);
     scene.remove(cube);
   });
   */
 
+  // ANIMATE
   function animate() {
     requestAnimationFrame(animate);
     cube.rotation.y += 0.01;
@@ -78,6 +88,7 @@
   }
   animate();
 
+  // RESIZE
   window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -87,3 +98,4 @@
 
 </body>
 </html>
+
