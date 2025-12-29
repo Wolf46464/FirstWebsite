@@ -2,75 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Three.js GLB Test</title>
+  <title>Three.js Test</title>
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-    }
+    body { margin: 0; overflow: hidden; }
   </style>
 </head>
 <body>
 
 <script type="module">
   import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-  import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
-  // SCENE
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x222222);
+  scene.background = new THREE.Color(0x444444);
 
-  // CAMERA
-  const camera = new THREE.PerspectiveCamera(
-    60,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    100
-  );
-  camera.position.set(0, 1.5, 3);
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 100);
+  camera.position.z = 3;
 
-  // RENDERER
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);
 
-  // LIGHTS (VERY IMPORTANT)
-  const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
-  scene.add(ambientLight);
-
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-  directionalLight.position.set(5, 5, 5);
-  scene.add(directionalLight);
-
-  // LOAD GLB
-  const loader = new GLTFLoader();
-  loader.load(
-    './penguin.glb',
-    (gltf) => {
-      const model = gltf.scene;
-      model.scale.set(1, 1, 1); // change if needed
-      scene.add(model);
-      console.log('Penguin loaded');
-    },
-    undefined,
-    (error) => {
-      console.error('Error loading GLB:', error);
-    }
+  const cube = new THREE.Mesh(
+    new THREE.BoxGeometry(),
+    new THREE.MeshBasicMaterial({ color: 0x00ff00 })
   );
+  scene.add(cube);
 
-  // ANIMATE
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  // RESIZE
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
+  renderer.render(scene, camera);
 </script>
 
 </body>
