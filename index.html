@@ -1,75 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Three.js Test</title>
+  <meta charset="UTF-8" />
+  <title>My 3D Website</title>
+
+  <!-- YOU CAN EDIT THIS HEADER -->
   <style>
-    body { margin: 0; overflow: hidden; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+    }
+
+    header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 16px 24px;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    header p {
+      margin: 4px 0 0;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    canvas {
+      display: block;
+    }
   </style>
 </head>
+
 <body>
 
-<script type="module">
-  import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-  import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+  <!-- EDITABLE HEADER -->
+  <header>
+    <h1>My 3D City Project</h1>
+    <p>Edit this text later — login, menu, etc.</p>
+  </header>
 
-  // SCENE
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x87ceeb);
+  <!-- THREE.JS -->
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+    import { GLTFLoader } from 'https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
 
-  // CAMERA
-  const camera = new THREE.PerspectiveCamera(
-    60,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    100
-  );
-  camera.position.set(0, 1.5, 3);
+    // SCENE
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
 
-  // RENDERER
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.body.appendChild(renderer.domElement);
+    // CAMERA
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(0, 1.5, 4);
 
-  // LIGHTS (REQUIRED)
-  scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-
-  const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-  dirLight.position.set(5, 5, 5);
-  scene.add(dirLight);
-
-  // LOAD PENGUIN
-  const loader = new GLTFLoader();
-  loader.load(
-    './penguin.glb',
-    (gltf) => {
-      const penguin = gltf.scene;
-      penguin.scale.set(1, 1, 1); // try 0.5 or 2 if needed
-      scene.add(penguin);
-      console.log('Penguin loaded');
-    },
-    undefined,
-    (err) => {
-      console.error(err);
-    }
-  );
-
-  // ANIMATE
-  function animate() {
-    requestAnimationFrame(animate);
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  // RESIZE
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
+    // RENDERER
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-</script>
+    document.body.appendChild(renderer.domElement);
 
+    // LIGHTS
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
+    dirLight.position.set(5, 10, 5);
+    scene.add(dirLight);
+
+    // TEST GEOMETRY (PROVES SCENE WORKS)
+    const testCube = new THREE.Mesh(
+      new THREE.BoxGeometry(),
+      new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+    );
+    scene.add(testCube);
+
+    // OPTIONAL: LOAD PENGUIN (UNCOMMENT WHEN READY)
+    /*
+    const loader = new GLTFLoader();
+    loader.load(
+      './penguin.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.scale.set(1, 1, 1);
+        model.position.y = -0.5;
+        scene.add(model);
+        scene.remove(testCube); // remove cube if model loads
+      },
+      undefined,
+      (error) => {
+        console.error('GLB load error:', error);
+      }
+    );
+    */
+
+    // ANIMATION LOOP
+    function animate() {
+      requestAnimationFrame(animate);
+      testCube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // RESIZE HANDLING
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
 
 </body>
 </html>
-
