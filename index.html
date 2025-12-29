@@ -1,56 +1,65 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Penguin GLB Viewer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Penguin GLB Viewer</title>
   <style>
-    body { margin: 0; background: #111; color: #fff; font-family: Arial, sans-serif; }
-    header { position: absolute; top: 0; left: 0; width: 100%; padding: 12px 16px; background: rgba(0,0,0,0.5); z-index: 10; }
-    canvas { display: block; } /* remove scrollbars */
+    html,body { height:100%; margin:0; background:#111; color:#fff; font-family:Arial, sans-serif; }
+    header { position:absolute; top:0; left:0; width:100%; padding:12px 16px; background:rgba(0,0,0,0.45); z-index:10; }
+    canvas { display:block; } /* remove scrollbars */
   </style>
+
+  <!-- Import map: map the bare specifier "three" to the full CDN module URL.
+       This lets example modules (which do `import { ... } from "three"`) work in the browser. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
 </head>
 <body>
   <header>
-    <h1 style="margin:0;font-size:18px">Penguin GLB Viewer</h1>
-    <small>Make sure penguin.glb is in the same folder as this index.html</small>
+    <strong>Penguin GLB Viewer</strong>
+    <div style="font-size:12px">Ensure penguin.glb is in the same folder as this index.html</div>
   </header>
 
   <script type="module">
-    // CDN imports (no bundler required)
-    import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+    // Example modules (GLTFLoader / OrbitControls) will import 'three' as a bare specifier;
+    // the import map above resolves that to the CDN URL.
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+    import * as THREE from 'three'; // resolved by importmap
 
-    // Scene + Camera
+    // Basic scene + camera + renderer
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
+    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 1000);
     camera.position.set(0, 1.5, 4);
 
-    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.outputEncoding = THREE.sRGBEncoding; // important for glTF colors
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
-    // Controls (use mouse to orbit, zoom)
+    // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    // Simple lighting that works well with glTF PBR materials
+    // Lights
     const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
     scene.add(hemi);
-
     const dir = new THREE.DirectionalLight(0xffffff, 2.0);
     dir.position.set(5, 10, 5);
     dir.castShadow = true;
     scene.add(dir);
 
-    // Small ground so shadows/scale feel right
+    // Ground (optional)
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(50, 50),
       new THREE.MeshStandardMaterial({ color: 0x222222 })
@@ -68,23 +77,20 @@
     placeholder.position.y = 0.25;
     scene.add(placeholder);
 
-    // Load GLB - path is relative to this index.html
+    // GLTF load
     const loader = new GLTFLoader();
-
     loader.load(
-      './penguin.glb',
+      './penguin.glb', // must be in same folder as index.html
       (gltf) => {
         const model = gltf.scene || gltf.scenes[0];
-        model.traverse((node) => {
-          if (node.isMesh) {
-            node.castShadow = true;
-            node.receiveShadow = true;
-            // If the mesh has a texture map, ensure correct encoding:
-            if (node.material && node.material.map) node.material.map.encoding = THREE.sRGBEncoding;
-            node.material.needsUpdate = true;
+        model.traverse((n) => {
+          if (n.isMesh) {
+            n.castShadow = true;
+            n.receiveShadow = true;
+            if (n.material && n.material.map) n.material.map.encoding = THREE.sRGBEncoding;
+            n.material.needsUpdate = true;
           }
         });
-
         scene.add(model);
         scene.remove(placeholder);
 
@@ -106,8 +112,7 @@
           controls.update();
         }
 
-        // Debug: list materials in console
-        model.traverse((n) => { if (n.isMesh) console.log('Mesh material:', n.material); });
+        console.log('GLTF loaded', gltf);
       },
       (xhr) => {
         if (xhr.total) console.log(`Load ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
@@ -115,7 +120,7 @@
       },
       (err) => {
         console.error('GLTF load error:', err);
-        alert('Failed to load penguin.glb — open DevTools Console and Network tab to inspect the error.');
+        alert('Failed to load penguin.glb — open DevTools Console/Network for details.');
       }
     );
 
@@ -127,11 +132,11 @@
     }
     animate();
 
-    // Resize handler
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
+    // Resize
+    addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(innerWidth, innerHeight);
     });
   </script>
 </body>
