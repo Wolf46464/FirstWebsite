@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Penguin + WaterBlock Viewer</title>
+  <title>Penguin + WaterBlock Viewer (No Water Shadows)</title>
   <style>
     html,body { height:100%; margin:0; background:#111; color:#fff; font-family:Arial, sans-serif; }
     header { position:absolute; top:0; left:0; width:100%; padding:10px 14px; background:rgba(0,0,0,0.45); z-index:10; }
@@ -11,7 +11,7 @@
     .note { font-size:12px; color:#ddd; }
   </style>
 
-  <!-- import map: allow example modules that use bare "three" specifier to work -->
+  <!-- import map: allow example modules that use bare "three" specifier to work in the browser -->
   <script type="importmap">
   {
     "imports": {
@@ -23,7 +23,7 @@
 <body>
   <header>
     <strong>Penguin + WaterBlock Viewer</strong>
-    <div class="note">Put both <code>penguin.glb</code> and <code>WaterBlock.glb</code> in the same folder as this file. Hard-refresh after updates.</div>
+    <div class="note">Place both <code>penguin.glb</code> and <code>WaterBlock.glb</code> in the same folder as this file. Hard-refresh after updates.</div>
   </header>
 
   <script type="module">
@@ -32,7 +32,7 @@
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
     import * as THREE from 'three'; // resolved by importmap
 
-    // Scene, camera, renderer
+    // Renderer / scene / camera
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb);
 
@@ -63,6 +63,11 @@
     dir.shadow.camera.near = 0.5;
     dir.shadow.camera.far = 50;
     dir.shadow.mapSize.set(1024, 1024);
+
+    // Reduce shadow acne and artifacts globally
+    dir.shadow.bias = -0.0005;     // try small negative bias
+    dir.shadow.normalBias = 0.02;  // helps on some meshes
+
     scene.add(dir);
 
     // Placeholders while loading
@@ -80,20 +85,20 @@
     placeholderWater.position.set(0.8, 0.05, 0);
     scene.add(placeholderWater);
 
-    // Animation helpers
+    // Helpers for animations and water
     const clock = new THREE.Clock();
-    const mixers = []; // multiple mixers for multiple models
-    const actions = {}; // keyed actions: "<modelTag>:<clipName>"
-    const waterMeshes = []; // array of meshes whose textures we will animate
+    const mixers = []; // mixers for loaded models
+    const actions = {};
+    const waterMeshes = [];
 
     // GLTF loader (DRACO optional)
     const loader = new GLTFLoader();
-    // If your GLBs use Draco compression, uncomment:
+    // If your GLBs use Draco compression, uncomment and use:
     // const draco = new DRACOLoader();
     // draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
     // loader.setDRACOLoader(draco);
 
-    // Utility: configure mesh materials (encoding/wrapping)
+    // Utility: configure mesh materials for GLTF (encoding/filtering)
     function configureMeshMaterialForGLTF(node) {
       if (!node.isMesh) return;
       node.castShadow = true;
@@ -103,14 +108,17 @@
       mats.forEach((m) => {
         if (!m) return;
         if (m.map) {
-          // color textures should use sRGB encoding
           m.map.encoding = THREE.sRGBEncoding;
+          // improve filtering to reduce visible seams/aliasing
+          m.map.minFilter = THREE.LinearMipMapLinearFilter;
+          m.map.magFilter = THREE.LinearFilter;
+          m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
         }
         m.needsUpdate = true;
       });
     }
 
-    // Fit camera to the whole scene (all children)
+    // Fit camera to scene bounding box
     function fitCameraToScene(padding = 1.4) {
       const box = new THREE.Box3().setFromObject(scene);
       if (box.isEmpty()) return;
@@ -122,7 +130,6 @@
       let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
       cameraZ *= padding;
 
-      // angle vector to position camera
       const dirVec = new THREE.Vector3(1, 0.7, 1).normalize();
       camera.position.copy(center).add(dirVec.multiplyScalar(cameraZ));
       camera.near = Math.max(0.01, maxDim / 100);
@@ -139,17 +146,13 @@
       (gltf) => {
         console.log('penguin.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
-        if (!model) {
-          console.error('penguin.glb: no scene found');
-          return;
-        }
+        if (!model) { console.error('penguin.glb: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
-        model.position.set(-0.8, 0, 0); // place slightly left so both models are visible
+        model.position.set(-0.8, 0, 0);
         scene.add(model);
         scene.remove(placeholderPenguin);
 
-        // animations: add mixer if there are clips
         const clips = gltf.animations || [];
         if (clips.length) {
           const mixer = new THREE.AnimationMixer(model);
@@ -161,70 +164,62 @@
             action.setLoop(THREE.LoopRepeat);
             actions[key] = action;
           });
-          // play first penguin clip by default (if any)
           const firstKey = Object.keys(actions).find(k => k.startsWith('penguin:'));
           if (firstKey) { actions[firstKey].reset().play(); console.log('Playing', firstKey); }
           console.log('Penguin clips:', Object.keys(actions).filter(k => k.startsWith('penguin:')));
         }
 
-        // after adding, try to fit camera
         fitCameraToScene();
       },
-      (xhr) => {
-        if (xhr.total) console.log(`penguin.glb ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
-      },
-      (err) => {
-        console.error('penguin.glb load error:', err);
-      }
+      (xhr) => { if (xhr.total) console.log(`penguin.glb ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`); },
+      (err) => { console.error('penguin.glb load error:', err); }
     );
 
-    // Load WaterBlock.glb (the water model)
+    // Load WaterBlock.glb and disable shadows for its meshes to avoid stripes
     loader.load(
       './WaterBlock.glb',
       (gltf) => {
         console.log('WaterBlock.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
-        if (!model) {
-          console.error('WaterBlock.glb: no scene found');
-          return;
-        }
+        if (!model) { console.error('WaterBlock.glb: no scene'); return; }
 
-        // inside your WaterBlock loader callback, in the model.traverse loop
-model.traverse((n) => {
-  if (!n.isMesh) return;
+        model.traverse((n) => {
+          if (!n.isMesh) return;
 
-  // --- disable shadows on the water mesh to remove stripe artifacts ---
-  // this prevents the mesh from casting or receiving shadows
-  n.castShadow = false;
-  n.receiveShadow = false;
+          // Disable shadows specifically for water to remove stripe artifacts
+          n.castShadow = false;
+          n.receiveShadow = false;
 
-  // configure materials/textures
-  const mats = Array.isArray(n.material) ? n.material : [n.material];
-  mats.forEach((m) => {
-    if (!m) return;
-    if (m.map) {
-      m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
-      m.map.repeat.set(4, 4);
-      m.map.encoding = THREE.sRGBEncoding;
+          // Configure materials and texture wrapping/filtering
+          const mats = Array.isArray(n.material) ? n.material : [n.material];
+          mats.forEach((m) => {
+            if (!m) return;
+            if (m.map) {
+              m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
+              m.map.repeat.set(4, 4); // tweak tiling
+              m.map.encoding = THREE.sRGBEncoding;
+              m.map.minFilter = THREE.LinearMipMapLinearFilter;
+              m.map.magFilter = THREE.LinearFilter;
+              m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+              // optionally render both sides if the water mesh is thin:
+              // m.side = THREE.DoubleSide;
+            } else {
+              // If there's no texture map, there's nothing to animate by offset
+              console.warn('Water mesh material has no map:', n.name);
+            }
+            m.needsUpdate = true;
+          });
 
-      // reduce texture aliasing/seams
-      m.map.minFilter = THREE.LinearMipMapLinearFilter;
-      m.map.magFilter = THREE.LinearFilter;
-      m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    }
+          // store water meshes that have maps for the runtime offset animation
+          if ((Array.isArray(n.material) ? n.material : [n.material]).some(m=>m && m.map)) {
+            if (!waterMeshes.includes(n)) waterMeshes.push(n);
+          }
+        });
 
-    // optional: render both sides if you see weird lighting on single-sided water
-    // m.side = THREE.DoubleSide;
-
-    m.needsUpdate = true;
-  });
-});
-
-        model.position.set(0.8, 0, 0); // place right of penguin
+        model.position.set(0.8, 0, 0);
         scene.add(model);
         scene.remove(placeholderWater);
 
-        // animations for water model (if any)
         const clips = gltf.animations || [];
         if (clips.length) {
           const mixer = new THREE.AnimationMixer(model);
@@ -236,21 +231,15 @@ model.traverse((n) => {
             action.setLoop(THREE.LoopRepeat);
             actions[key] = action;
           });
-          // play the first water clip if present
           const firstKey = Object.keys(actions).find(k => k.startsWith('water:'));
           if (firstKey) { actions[firstKey].reset().play(); console.log('Playing', firstKey); }
           console.log('Water clips:', Object.keys(actions).filter(k => k.startsWith('water:')));
         }
 
-        // fit camera to show both models
         fitCameraToScene();
       },
-      (xhr) => {
-        if (xhr.total) console.log(`WaterBlock.glb ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
-      },
-      (err) => {
-        console.error('WaterBlock.glb load error:', err);
-      }
+      (xhr) => { if (xhr.total) console.log(`WaterBlock.glb ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`); },
+      (err) => { console.error('WaterBlock.glb load error:', err); }
     );
 
     // Animation loop
@@ -258,14 +247,13 @@ model.traverse((n) => {
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      // update all mixers
+      // update mixers
       for (const m of mixers) m.update(delta);
 
-      // animate water textures
+      // animate water texture offsets for meshes that have a texture map
       if (waterMeshes.length) {
-        // speeds (tweak)
-        const speedX = 0.00;
-        const speedY = 0.1;
+        const speedX = 0.05;
+        const speedY = 0.02;
         for (const mesh of waterMeshes) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           for (const mat of mats) {
@@ -281,32 +269,24 @@ model.traverse((n) => {
     }
     animate();
 
-    // Resize handling
+    // Resize handler
     addEventListener('resize', () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
     });
 
-    // Utility to play a clip by name from console: playClip('penguin:Walk') or playClip('water:Wave')
+    // Play clip by key in console: playClip('penguin:Run') or playClip('water:Wave')
     window.playClip = function(key) {
       if (!actions[key]) { console.warn('Clip not found:', key); return; }
-      // stop currently running actions and play requested one
       for (const k in actions) {
-        if (actions[k].isRunning()) {
-          actions[k].stop();
-        }
+        if (actions[k].isRunning && actions[k].isRunning()) actions[k].stop();
       }
       actions[key].reset().play();
     };
 
-    // Expose debug access
+    // Debug helpers
     window._threeDebug = { scene, renderer, camera, waterMeshes, actions };
   </script>
 </body>
 </html>
-
-
-
-
-
