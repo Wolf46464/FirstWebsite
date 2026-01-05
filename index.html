@@ -87,8 +87,8 @@
         const model = gltf.scene || gltf.scenes[0];
         model.traverse((n) => {
           if (n.isMesh) {
-            n.castShadow = true;
-            n.receiveShadow = true;
+            n.castShadow = false;
+            n.receiveShadow = false;
             if (n.material && n.material.map) n.material.map.encoding = THREE.sRGBEncoding;
             n.material.needsUpdate = true;
           }
@@ -163,6 +163,7 @@
   </script>
 </body>
 </html>
+
 
 
 
