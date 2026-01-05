@@ -191,6 +191,8 @@
 
         model.traverse((n) => {
           if (n.isMesh) {
+              n.castShadow = false;
+              n.receiveShadow = false;
             configureMeshMaterialForGLTF(n);
             // If mesh has a texture map, prepare it for animation (RepeatWrapping)
             const mats = Array.isArray(n.material) ? n.material : [n.material];
@@ -294,5 +296,6 @@
   </script>
 </body>
 </html>
+
 
 
