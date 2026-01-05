@@ -196,7 +196,7 @@
             if (!m) return;
             if (m.map) {
               m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
-              m.map.repeat.set(4, 4); // tweak tiling
+              m.map.repeat.set(0.5, 0.5); // tweak tiling
               m.map.encoding = THREE.sRGBEncoding;
               m.map.minFilter = THREE.LinearMipMapLinearFilter;
               m.map.magFilter = THREE.LinearFilter;
@@ -290,3 +290,4 @@
   </script>
 </body>
 </html>
+
