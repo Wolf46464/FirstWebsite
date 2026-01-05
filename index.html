@@ -253,8 +253,8 @@
       // animate water textures
       if (waterMeshes.length) {
         // speeds (tweak)
-        const speedX = 0.05;
-        const speedY = 0.00;
+        const speedX = 0.00;
+        const speedY = 0.1;
         for (const mesh of waterMeshes) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           for (const mat of mats) {
@@ -294,4 +294,5 @@
   </script>
 </body>
 </html>
+
 
