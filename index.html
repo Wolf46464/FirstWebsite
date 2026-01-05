@@ -191,8 +191,8 @@
 
         model.traverse((n) => {
           if (n.isMesh) {
-              n.castShadow = false;
-              n.receiveShadow = false;
+            n.castShadow = false;
+            n.receiveShadow = false;
             configureMeshMaterialForGLTF(n);
             // If mesh has a texture map, prepare it for animation (RepeatWrapping)
             const mats = Array.isArray(n.material) ? n.material : [n.material];
@@ -201,11 +201,12 @@
               if (m.map) {
                 m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
                 // starting repeat; tweak as needed
-                m.map.repeat.set(4, 4);
+                m.map.repeat.set(1, 1);
                 // ensure encoding preserved
                 m.map.encoding = THREE.sRGBEncoding;
                 // store mesh for animation
                 if (!waterMeshes.includes(n)) waterMeshes.push(n);
+                
               }
             });
           }
@@ -296,6 +297,7 @@
   </script>
 </body>
 </html>
+
 
 
 
