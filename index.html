@@ -80,7 +80,7 @@
     scene.add(placeholder);
 
     // GLTF load
-    const loader = new GLTFLoader();
+    /*const loader = new GLTFLoader();
     loader.load(
       './WaterBlock.glb', // must be in same folder as index.html
       (gltf) => {
@@ -94,22 +94,37 @@
           }
         });
         scene.add(model);
-        scene.remove(placeholder);
+        scene.remove(placeholder);*/
+    let waterTexture = null;
+
+const loader = new GLTFLoader();
+loader.load(
+  './WaterBlock.glb',
+  (gltf) => {
+    const model = gltf.scene || gltf.scenes[0];
+
+    model.traverse((n) => {
+      if (n.isMesh && n.material && n.material.map) {
+        waterTexture = n.material.map;
+
+        // REQUIRED for UV animation
+        waterTexture.wrapS = THREE.RepeatWrapping;
+        waterTexture.wrapT = THREE.RepeatWrapping;
+
+        n.material.needsUpdate = true;
+      }
+    });
+
+    scene.add(model);
+  },
+  undefined,
+  (error) => {
+    console.error(error);
+  }
+);
 
 
-/*loader.load(
-      './WaterBlock.glb', // must be in same folder as index.html
-      (gltf) => {
-        const model2 = gltf.scene || gltf.scenes[0];
-        model.traverse((n) => {
-          if (n.isMesh) {
-            n.castShadow = true;
-            n.receiveShadow = true;
-            if (n.material && n.material.map) n.material.map.encoding = THREE.sRGBEncoding;
-            n.material.needsUpdate = true;
-          }
-        });
-        scene.add(model2);*/
+
         
 
 
@@ -148,9 +163,13 @@
 
     // Render loop
     function animate() {
+      
       requestAnimationFrame(animate);
       controls.update();
       renderer.render(scene, camera);
+        if (waterTexture) {
+            waterTexture.offset.y -= 0.005; // speed
+        }
     }
     animate();
 
@@ -163,6 +182,7 @@
   </script>
 </body>
 </html>
+
 
 
 
