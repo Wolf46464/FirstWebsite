@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Penguin GLB Viewer</title>
+  <title>Penguin + Water Animation</title>
   <style>
     html,body { height:100%; margin:0; background:#111; color:#fff; font-family:Arial, sans-serif; }
-    header { position:absolute; top:0; left:0; width:100%; padding:12px 16px; background:rgba(0,0,0,0.45); z-index:10; }
+    header { position:absolute; top:0; left:0; width:100%; padding:10px 14px; background:rgba(0,0,0,0.45); z-index:10; }
     canvas { display:block; } /* remove scrollbars */
+    .note { font-size:12px; color:#ddd; }
   </style>
 
-  <!-- Import map: map the bare specifier "three" to the full CDN module URL.
-       This lets example modules (which do `import { ... } from "three"`) work in the browser. -->
+  <!-- import map: map 'three' bare specifier so example modules that do `import ... from "three"` work -->
   <script type="importmap">
   {
     "imports": {
@@ -22,56 +22,61 @@
 </head>
 <body>
   <header>
-    <strong>Penguin GLB Viewer</strong>
-    <div style="font-size:12px">Ensure penguin.glb is in the same folder as this index.html</div>
+    <strong>Penguin + Water Animation</strong>
+    <div class="note">Make sure <code>penguin.glb</code> is in the same folder as this file. Hard-refresh after updates.</div>
   </header>
 
   <script type="module">
-    // Example modules (GLTFLoader / OrbitControls) will import 'three' as a bare specifier;
-    // the import map above resolves that to the CDN URL.
+    // Imports (GLTFLoader & OrbitControls use bare 'three' internally; import map resolves it)
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+    import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
     import * as THREE from 'three'; // resolved by importmap
 
-    // Basic scene + camera + renderer
+    // Scene, camera, renderer
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb);
+    scene.background = new THREE.Color(0x87ceeb); // light-blue sky
 
-    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 1000);
+    const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 2000);
     camera.position.set(0, 1.5, 4);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
     renderer.shadowMap.enabled = true;
     document.body.appendChild(renderer.domElement);
 
     // Controls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
+    controls.dampingFactor = 0.07;
 
     // Lights
     const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1.2);
     scene.add(hemi);
+
     const dir = new THREE.DirectionalLight(0xffffff, 2.0);
     dir.position.set(5, 10, 5);
     dir.castShadow = true;
+    dir.shadow.camera.near = 0.5;
+    dir.shadow.camera.far = 50;
+    dir.shadow.mapSize.set(1024, 1024);
     scene.add(dir);
 
-    // Ground (optional)
-    /*
+    // Optional ground (comment out if you want transparent base)
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(50, 50),
       new THREE.MeshStandardMaterial({ color: 0x222222 })
-      
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.001;
     ground.receiveShadow = true;
     scene.add(ground);
-    */
-    // Placeholder while loading
+
+    // Loading placeholder
     const placeholder = new THREE.Mesh(
       new THREE.BoxGeometry(0.5, 0.5, 0.5),
       new THREE.MeshStandardMaterial({ color: 0x008800 })
@@ -79,59 +84,109 @@
     placeholder.position.y = 0.25;
     scene.add(placeholder);
 
-    // GLTF load
-    /*const loader = new GLTFLoader();
+    // Animation helpers
+    const clock = new THREE.Clock();
+    let mixer = null;
+    const actions = {};
+    let waterMesh = null; // reference to WaterBlock mesh, if present
+
+    // GLTF loader with optional DRACO support
+    const loader = new GLTFLoader();
+    // If your GLB uses Draco compression, uncomment the two lines below:
+    // const draco = new DRACOLoader();
+    // draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/'); loader.setDRACOLoader(draco);
+
     loader.load(
-      './WaterBlock.glb', // must be in same folder as index.html
+      './penguin.glb',
       (gltf) => {
+        console.log('GLTF loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
-        model.traverse((n) => {
-          if (n.isMesh) {
-            n.castShadow = false;
-            n.receiveShadow = false;
-            if (n.material && n.material.map) n.material.map.encoding = THREE.sRGBEncoding;
-            n.material.needsUpdate = true;
+        if (!model) {
+          console.error('No scene in GLTF');
+          return;
+        }
+
+        // Enable shadows and fix texture encodings/wrapping
+        model.traverse((node) => {
+          if (node.isMesh) {
+            node.castShadow = true;
+            node.receiveShadow = true;
+
+            // Handle materials (single or array)
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            mats.forEach((m) => {
+              if (!m) return;
+              // ensure color textures display correctly
+              if (m.map) {
+                m.map.encoding = THREE.sRGBEncoding;
+              }
+              // If the water texture is already present on a material for this mesh,
+              // we'll configure wrapping below when we find the exact mesh.
+              m.needsUpdate = true;
+            });
           }
         });
+
+        // Add model to scene (replace placeholder)
         scene.add(model);
-        scene.remove(placeholder);*/
-    let waterTexture = null;
+        scene.remove(placeholder);
 
-const loader = new GLTFLoader();
-loader.load(
-  './WaterBlock.glb',
-  (gltf) => {
-    const model = gltf.scene || gltf.scenes[0];
+        // Find water mesh by exact name 'WaterBlock' (case-sensitive). If not found,
+        // try to find by a partial name or first mesh that looks like water.
+        waterMesh = model.getObjectByName('WaterBlock') || model.getObjectByProperty('name', 'WaterBlock') || null;
+        if (!waterMesh) {
+          // try partial match
+          model.traverse((n) => {
+            if (!waterMesh && n.isMesh && /water/i.test(n.name)) {
+              waterMesh = n;
+            }
+          });
+        }
 
-    model.traverse((n) => {
-      if (n.isMesh && n.material && n.material.map) {
-        waterTexture = n.material.map;
+        if (waterMesh && waterMesh.isMesh) {
+          // Support both material arrays and single materials
+          const mats = Array.isArray(waterMesh.material) ? waterMesh.material : [waterMesh.material];
+          mats.forEach((m) => {
+            if (!m) return;
+            // If material has a texture map, enable repeating and correct wrapping
+            if (m.map) {
+              m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
+              // default repeat - tweak to taste
+              m.map.repeat.set(4, 4);
+              m.map.encoding = THREE.sRGBEncoding;
+            } else {
+              console.warn('Water mesh material has no map; texture animation will do nothing.');
+            }
+            m.needsUpdate = true;
+          });
+          console.log('Water mesh found:', waterMesh.name, waterMesh);
+        } else {
+          console.log('No WaterBlock mesh found in model (check names).');
+        }
 
-        // REQUIRED for UV animation
-        waterTexture.wrapS = THREE.RepeatWrapping;
-        waterTexture.wrapT = THREE.RepeatWrapping;
+        // Setup animations if present
+        const clips = gltf.animations || [];
+        if (clips.length) {
+          mixer = new THREE.AnimationMixer(model);
+          clips.forEach((clip, i) => {
+            const name = clip.name && clip.name.length ? clip.name : `clip${i}`;
+            const action = mixer.clipAction(clip);
+            action.setLoop(THREE.LoopRepeat);
+            actions[name] = action;
+          });
 
-        n.material.needsUpdate = true;
-      }
-    });
+          // play the first clip by default
+          const first = Object.keys(actions)[0];
+          if (first) {
+            actions[first].reset().play();
+            console.log('Playing animation clip:', first);
+          }
+          console.log('Available clips:', Object.keys(actions));
+        } else {
+          console.log('No animation clips in GLB.');
+        }
 
-    scene.add(model);
-  },
-  undefined,
-  (error) => {
-    console.error(error);
-  }
-);
-
-
-
-        
-
-
-
-
-        
-        // Fit camera to model
+        // Fit camera to model bounding box
         const box = new THREE.Box3().setFromObject(model);
         if (!box.isEmpty()) {
           const size = box.getSize(new THREE.Vector3());
@@ -139,7 +194,7 @@ loader.load(
           const maxDim = Math.max(size.x, size.y, size.z);
           const fov = camera.fov * (Math.PI / 180);
           let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-          cameraZ *= 1.6;
+          cameraZ *= 1.6; // padding
           const dirVec = new THREE.Vector3(1, 0.7, 1).normalize();
           camera.position.copy(center).add(dirVec.multiplyScalar(cameraZ));
           camera.near = Math.max(0.01, maxDim / 100);
@@ -148,43 +203,63 @@ loader.load(
           controls.target.copy(center);
           controls.update();
         }
-
-        console.log('GLTF loaded', gltf);
       },
       (xhr) => {
-        if (xhr.total) console.log(`Load ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
-        else console.log(`Loaded ${xhr.loaded} bytes`);
+        if (xhr.total) console.log(`GLTF ${((xhr.loaded / xhr.total) * 100).toFixed(1)}%`);
+        else console.log(`GLTF loaded ${xhr.loaded} bytes`);
       },
       (err) => {
         console.error('GLTF load error:', err);
-        alert('Failed to load penguin.glb — open DevTools Console/Network for details.');
+        alert('Failed to load penguin.glb. Check DevTools Network tab and confirm the file is reachable.');
       }
     );
 
-    // Render loop
+    // Animation loop
     function animate() {
-      
       requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      // update mixer (GLB animations)
+      if (mixer) mixer.update(delta);
+
+      // animate water texture offset if we have a water mesh
+      if (waterMesh && waterMesh.isMesh) {
+        const mats = Array.isArray(waterMesh.material) ? waterMesh.material : [waterMesh.material];
+        mats.forEach((m) => {
+          if (!m || !m.map) return;
+          // adjust these speeds to taste
+          const speedX = 0.05; // horizontal flow
+          const speedY = 0.02; // vertical flow
+          m.map.offset.x = (m.map.offset.x + delta * speedX) % 1;
+          m.map.offset.y = (m.map.offset.y + delta * speedY) % 1;
+        });
+      }
+
       controls.update();
       renderer.render(scene, camera);
-        if (waterTexture) {
-            waterTexture.offset.y -= 0.005; // speed
-        }
     }
     animate();
 
-    // Resize
+    // Responsive
     addEventListener('resize', () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
     });
+
+    // Convenience: expose a function to play a clip by name (open console and call playClip('Run'))
+    window.playClip = function(name) {
+      if (!mixer || !actions[name]) { console.warn('No such clip or no mixer yet:', name); return; }
+      // crossfade from any currently running action
+      for (const k in actions) {
+        if (actions[k].isRunning()) {
+          actions[k].crossFadeTo(actions[name], 0.4, false);
+          actions[name].reset().play();
+          return;
+        }
+      }
+      actions[name].reset().play();
+    };
   </script>
 </body>
 </html>
-
-
-
-
-
-
