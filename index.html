@@ -82,7 +82,7 @@
     // GLTF load
     const loader = new GLTFLoader();
     loader.load(
-      './penguin.glb', // must be in same folder as index.html
+      './WaterBlock.glb', // must be in same folder as index.html
       (gltf) => {
         const model = gltf.scene || gltf.scenes[0];
         model.traverse((n) => {
@@ -97,7 +97,7 @@
         scene.remove(placeholder);
 
 
-loader.load(
+/*loader.load(
       './WaterBlock.glb', // must be in same folder as index.html
       (gltf) => {
         const model2 = gltf.scene || gltf.scenes[0];
@@ -109,7 +109,7 @@ loader.load(
             n.material.needsUpdate = true;
           }
         });
-        scene.add(model2);
+        scene.add(model2);*/
         
 
 
@@ -163,6 +163,7 @@ loader.load(
   </script>
 </body>
 </html>
+
 
 
 
