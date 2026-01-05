@@ -96,6 +96,26 @@
         scene.add(model);
         scene.remove(placeholder);
 
+
+loader.load(
+      './WaterBlock.glb', // must be in same folder as index.html
+      (gltf) => {
+        const model2 = gltf.scene || gltf.scenes[0];
+        model.traverse((n) => {
+          if (n.isMesh) {
+            n.castShadow = true;
+            n.receiveShadow = true;
+            if (n.material && n.material.map) n.material.map.encoding = THREE.sRGBEncoding;
+            n.material.needsUpdate = true;
+          }
+        });
+        scene.add(model2);
+        
+
+
+
+
+        
         // Fit camera to model
         const box = new THREE.Box3().setFromObject(model);
         if (!box.isEmpty()) {
@@ -143,5 +163,6 @@
   </script>
 </body>
 </html>
+
 
 
