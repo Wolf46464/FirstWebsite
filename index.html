@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Penguin + Water Animation</title>
+  <title>Penguin + WaterBlock Viewer</title>
   <style>
     html,body { height:100%; margin:0; background:#111; color:#fff; font-family:Arial, sans-serif; }
     header { position:absolute; top:0; left:0; width:100%; padding:10px 14px; background:rgba(0,0,0,0.45); z-index:10; }
@@ -11,7 +11,7 @@
     .note { font-size:12px; color:#ddd; }
   </style>
 
-  <!-- import map: map 'three' bare specifier so example modules that do `import ... from "three"` work -->
+  <!-- import map: allow example modules that use bare "three" specifier to work -->
   <script type="importmap">
   {
     "imports": {
@@ -22,12 +22,11 @@
 </head>
 <body>
   <header>
-    <strong>Penguin + Water Animation</strong>
-    <div class="note">Make sure <code>penguin.glb</code> is in the same folder as this file. Hard-refresh after updates.</div>
+    <strong>Penguin + WaterBlock Viewer</strong>
+    <div class="note">Put both <code>penguin.glb</code> and <code>WaterBlock.glb</code> in the same folder as this file. Hard-refresh after updates.</div>
   </header>
 
   <script type="module">
-    // Imports (GLTFLoader & OrbitControls use bare 'three' internally; import map resolves it)
     import { GLTFLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
     import { DRACOLoader } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/DRACOLoader.js';
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
@@ -35,7 +34,7 @@
 
     // Scene, camera, renderer
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // light-blue sky
+    scene.background = new THREE.Color(0x87ceeb);
 
     const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 2000);
     camera.position.set(0, 1.5, 4);
@@ -66,151 +65,180 @@
     dir.shadow.mapSize.set(1024, 1024);
     scene.add(dir);
 
-    // Optional ground (comment out if you want transparent base)
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(50, 50),
-      new THREE.MeshStandardMaterial({ color: 0x222222 })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.001;
-    ground.receiveShadow = true;
-    scene.add(ground);
-
-    // Loading placeholder
-    const placeholder = new THREE.Mesh(
+    // Placeholders while loading
+    const placeholderPenguin = new THREE.Mesh(
       new THREE.BoxGeometry(0.5, 0.5, 0.5),
       new THREE.MeshStandardMaterial({ color: 0x008800 })
     );
-    placeholder.position.y = 0.25;
-    scene.add(placeholder);
+    placeholderPenguin.position.set(-0.8, 0.25, 0);
+    scene.add(placeholderPenguin);
+
+    const placeholderWater = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8, 0.1, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x0066cc })
+    );
+    placeholderWater.position.set(0.8, 0.05, 0);
+    scene.add(placeholderWater);
 
     // Animation helpers
     const clock = new THREE.Clock();
-    let mixer = null;
-    const actions = {};
-    let waterMesh = null; // reference to WaterBlock mesh, if present
+    const mixers = []; // multiple mixers for multiple models
+    const actions = {}; // keyed actions: "<modelTag>:<clipName>"
+    const waterMeshes = []; // array of meshes whose textures we will animate
 
-    // GLTF loader with optional DRACO support
+    // GLTF loader (DRACO optional)
     const loader = new GLTFLoader();
-    // If your GLB uses Draco compression, uncomment the two lines below:
+    // If your GLBs use Draco compression, uncomment:
     // const draco = new DRACOLoader();
-    // draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/'); loader.setDRACOLoader(draco);
+    // draco.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+    // loader.setDRACOLoader(draco);
 
+    // Utility: configure mesh materials (encoding/wrapping)
+    function configureMeshMaterialForGLTF(node) {
+      if (!node.isMesh) return;
+      node.castShadow = true;
+      node.receiveShadow = true;
+
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      mats.forEach((m) => {
+        if (!m) return;
+        if (m.map) {
+          // color textures should use sRGB encoding
+          m.map.encoding = THREE.sRGBEncoding;
+        }
+        m.needsUpdate = true;
+      });
+    }
+
+    // Fit camera to the whole scene (all children)
+    function fitCameraToScene(padding = 1.4) {
+      const box = new THREE.Box3().setFromObject(scene);
+      if (box.isEmpty()) return;
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      const fov = camera.fov * (Math.PI / 180);
+      let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+      cameraZ *= padding;
+
+      // angle vector to position camera
+      const dirVec = new THREE.Vector3(1, 0.7, 1).normalize();
+      camera.position.copy(center).add(dirVec.multiplyScalar(cameraZ));
+      camera.near = Math.max(0.01, maxDim / 100);
+      camera.far = Math.max(1000, cameraZ * 10);
+      camera.updateProjectionMatrix();
+
+      controls.target.copy(center);
+      controls.update();
+    }
+
+    // Load penguin.glb
     loader.load(
       './penguin.glb',
       (gltf) => {
-        console.log('GLTF loaded', gltf);
+        console.log('penguin.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
         if (!model) {
-          console.error('No scene in GLTF');
+          console.error('penguin.glb: no scene found');
           return;
         }
 
-        // Enable shadows and fix texture encodings/wrapping
-        model.traverse((node) => {
-          if (node.isMesh) {
-            node.castShadow = true;
-            node.receiveShadow = true;
+        model.traverse((n) => configureMeshMaterialForGLTF(n));
+        model.position.set(-0.8, 0, 0); // place slightly left so both models are visible
+        scene.add(model);
+        scene.remove(placeholderPenguin);
 
-            // Handle materials (single or array)
-            const mats = Array.isArray(node.material) ? node.material : [node.material];
+        // animations: add mixer if there are clips
+        const clips = gltf.animations || [];
+        if (clips.length) {
+          const mixer = new THREE.AnimationMixer(model);
+          mixers.push(mixer);
+          clips.forEach((clip, i) => {
+            const name = clip.name && clip.name.length ? clip.name : `penguin_clip${i}`;
+            const key = `penguin:${name}`;
+            const action = mixer.clipAction(clip);
+            action.setLoop(THREE.LoopRepeat);
+            actions[key] = action;
+          });
+          // play first penguin clip by default (if any)
+          const firstKey = Object.keys(actions).find(k => k.startsWith('penguin:'));
+          if (firstKey) { actions[firstKey].reset().play(); console.log('Playing', firstKey); }
+          console.log('Penguin clips:', Object.keys(actions).filter(k => k.startsWith('penguin:')));
+        }
+
+        // after adding, try to fit camera
+        fitCameraToScene();
+      },
+      (xhr) => {
+        if (xhr.total) console.log(`penguin.glb ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
+      },
+      (err) => {
+        console.error('penguin.glb load error:', err);
+      }
+    );
+
+    // Load WaterBlock.glb (the water model)
+    loader.load(
+      './WaterBlock.glb',
+      (gltf) => {
+        console.log('WaterBlock.glb loaded', gltf);
+        const model = gltf.scene || gltf.scenes[0];
+        if (!model) {
+          console.error('WaterBlock.glb: no scene found');
+          return;
+        }
+
+        model.traverse((n) => {
+          if (n.isMesh) {
+            configureMeshMaterialForGLTF(n);
+            // If mesh has a texture map, prepare it for animation (RepeatWrapping)
+            const mats = Array.isArray(n.material) ? n.material : [n.material];
             mats.forEach((m) => {
               if (!m) return;
-              // ensure color textures display correctly
               if (m.map) {
+                m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
+                // starting repeat; tweak as needed
+                m.map.repeat.set(4, 4);
+                // ensure encoding preserved
                 m.map.encoding = THREE.sRGBEncoding;
+                // store mesh for animation
+                if (!waterMeshes.includes(n)) waterMeshes.push(n);
               }
-              // If the water texture is already present on a material for this mesh,
-              // we'll configure wrapping below when we find the exact mesh.
-              m.needsUpdate = true;
             });
           }
         });
 
-        // Add model to scene (replace placeholder)
+        model.position.set(0.8, 0, 0); // place right of penguin
         scene.add(model);
-        scene.remove(placeholder);
+        scene.remove(placeholderWater);
 
-        // Find water mesh by exact name 'WaterBlock' (case-sensitive). If not found,
-        // try to find by a partial name or first mesh that looks like water.
-        waterMesh = model.getObjectByName('WaterBlock') || model.getObjectByProperty('name', 'WaterBlock') || null;
-        if (!waterMesh) {
-          // try partial match
-          model.traverse((n) => {
-            if (!waterMesh && n.isMesh && /water/i.test(n.name)) {
-              waterMesh = n;
-            }
-          });
-        }
-
-        if (waterMesh && waterMesh.isMesh) {
-          // Support both material arrays and single materials
-          const mats = Array.isArray(waterMesh.material) ? waterMesh.material : [waterMesh.material];
-          mats.forEach((m) => {
-            if (!m) return;
-            // If material has a texture map, enable repeating and correct wrapping
-            if (m.map) {
-              m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
-              // default repeat - tweak to taste
-              m.map.repeat.set(4, 4);
-              m.map.encoding = THREE.sRGBEncoding;
-            } else {
-              console.warn('Water mesh material has no map; texture animation will do nothing.');
-            }
-            m.needsUpdate = true;
-          });
-          console.log('Water mesh found:', waterMesh.name, waterMesh);
-        } else {
-          console.log('No WaterBlock mesh found in model (check names).');
-        }
-
-        // Setup animations if present
+        // animations for water model (if any)
         const clips = gltf.animations || [];
         if (clips.length) {
-          mixer = new THREE.AnimationMixer(model);
+          const mixer = new THREE.AnimationMixer(model);
+          mixers.push(mixer);
           clips.forEach((clip, i) => {
-            const name = clip.name && clip.name.length ? clip.name : `clip${i}`;
+            const name = clip.name && clip.name.length ? clip.name : `water_clip${i}`;
+            const key = `water:${name}`;
             const action = mixer.clipAction(clip);
             action.setLoop(THREE.LoopRepeat);
-            actions[name] = action;
+            actions[key] = action;
           });
-
-          // play the first clip by default
-          const first = Object.keys(actions)[0];
-          if (first) {
-            actions[first].reset().play();
-            console.log('Playing animation clip:', first);
-          }
-          console.log('Available clips:', Object.keys(actions));
-        } else {
-          console.log('No animation clips in GLB.');
+          // play the first water clip if present
+          const firstKey = Object.keys(actions).find(k => k.startsWith('water:'));
+          if (firstKey) { actions[firstKey].reset().play(); console.log('Playing', firstKey); }
+          console.log('Water clips:', Object.keys(actions).filter(k => k.startsWith('water:')));
         }
 
-        // Fit camera to model bounding box
-        const box = new THREE.Box3().setFromObject(model);
-        if (!box.isEmpty()) {
-          const size = box.getSize(new THREE.Vector3());
-          const center = box.getCenter(new THREE.Vector3());
-          const maxDim = Math.max(size.x, size.y, size.z);
-          const fov = camera.fov * (Math.PI / 180);
-          let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-          cameraZ *= 1.6; // padding
-          const dirVec = new THREE.Vector3(1, 0.7, 1).normalize();
-          camera.position.copy(center).add(dirVec.multiplyScalar(cameraZ));
-          camera.near = Math.max(0.01, maxDim / 100);
-          camera.far = Math.max(1000, cameraZ * 10);
-          camera.updateProjectionMatrix();
-          controls.target.copy(center);
-          controls.update();
-        }
+        // fit camera to show both models
+        fitCameraToScene();
       },
       (xhr) => {
-        if (xhr.total) console.log(`GLTF ${((xhr.loaded / xhr.total) * 100).toFixed(1)}%`);
-        else console.log(`GLTF loaded ${xhr.loaded} bytes`);
+        if (xhr.total) console.log(`WaterBlock.glb ${(xhr.loaded / xhr.total * 100).toFixed(1)}%`);
       },
       (err) => {
-        console.error('GLTF load error:', err);
-        alert('Failed to load penguin.glb. Check DevTools Network tab and confirm the file is reachable.');
+        console.error('WaterBlock.glb load error:', err);
       }
     );
 
@@ -219,20 +247,22 @@
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
-      // update mixer (GLB animations)
-      if (mixer) mixer.update(delta);
+      // update all mixers
+      for (const m of mixers) m.update(delta);
 
-      // animate water texture offset if we have a water mesh
-      if (waterMesh && waterMesh.isMesh) {
-        const mats = Array.isArray(waterMesh.material) ? waterMesh.material : [waterMesh.material];
-        mats.forEach((m) => {
-          if (!m || !m.map) return;
-          // adjust these speeds to taste
-          const speedX = 0.05; // horizontal flow
-          const speedY = 0.02; // vertical flow
-          m.map.offset.x = (m.map.offset.x + delta * speedX) % 1;
-          m.map.offset.y = (m.map.offset.y + delta * speedY) % 1;
-        });
+      // animate water textures
+      if (waterMeshes.length) {
+        // speeds (tweak)
+        const speedX = 0.05;
+        const speedY = 0.02;
+        for (const mesh of waterMeshes) {
+          const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+          for (const mat of mats) {
+            if (!mat || !mat.map) continue;
+            mat.map.offset.x = (mat.map.offset.x + delta * speedX) % 1;
+            mat.map.offset.y = (mat.map.offset.y + delta * speedY) % 1;
+          }
+        }
       }
 
       controls.update();
@@ -240,26 +270,27 @@
     }
     animate();
 
-    // Responsive
+    // Resize handling
     addEventListener('resize', () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(innerWidth, innerHeight);
     });
 
-    // Convenience: expose a function to play a clip by name (open console and call playClip('Run'))
-    window.playClip = function(name) {
-      if (!mixer || !actions[name]) { console.warn('No such clip or no mixer yet:', name); return; }
-      // crossfade from any currently running action
+    // Utility to play a clip by name from console: playClip('penguin:Walk') or playClip('water:Wave')
+    window.playClip = function(key) {
+      if (!actions[key]) { console.warn('Clip not found:', key); return; }
+      // stop currently running actions and play requested one
       for (const k in actions) {
         if (actions[k].isRunning()) {
-          actions[k].crossFadeTo(actions[name], 0.4, false);
-          actions[name].reset().play();
-          return;
+          actions[k].stop();
         }
       }
-      actions[name].reset().play();
+      actions[key].reset().play();
     };
+
+    // Expose debug access
+    window._threeDebug = { scene, renderer, camera, waterMeshes, actions };
   </script>
 </body>
 </html>
