@@ -189,28 +189,36 @@
           return;
         }
 
-        model.traverse((n) => {
-          if (n.isMesh) {
-            n.castShadow = false;
-            n.receiveShadow = false;
-            configureMeshMaterialForGLTF(n);
-            // If mesh has a texture map, prepare it for animation (RepeatWrapping)
-            const mats = Array.isArray(n.material) ? n.material : [n.material];
-            mats.forEach((m) => {
-              if (!m) return;
-              if (m.map) {
-                m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
-                // starting repeat; tweak as needed
-                m.map.repeat.set(1, 1);
-                // ensure encoding preserved
-                m.map.encoding = THREE.sRGBEncoding;
-                // store mesh for animation
-                if (!waterMeshes.includes(n)) waterMeshes.push(n);
-                
-              }
-            });
-          }
-        });
+        // inside your WaterBlock loader callback, in the model.traverse loop
+model.traverse((n) => {
+  if (!n.isMesh) return;
+
+  // --- disable shadows on the water mesh to remove stripe artifacts ---
+  // this prevents the mesh from casting or receiving shadows
+  n.castShadow = false;
+  n.receiveShadow = false;
+
+  // configure materials/textures
+  const mats = Array.isArray(n.material) ? n.material : [n.material];
+  mats.forEach((m) => {
+    if (!m) return;
+    if (m.map) {
+      m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
+      m.map.repeat.set(4, 4);
+      m.map.encoding = THREE.sRGBEncoding;
+
+      // reduce texture aliasing/seams
+      m.map.minFilter = THREE.LinearMipMapLinearFilter;
+      m.map.magFilter = THREE.LinearFilter;
+      m.map.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    }
+
+    // optional: render both sides if you see weird lighting on single-sided water
+    // m.side = THREE.DoubleSide;
+
+    m.needsUpdate = true;
+  });
+});
 
         model.position.set(0.8, 0, 0); // place right of penguin
         scene.add(model);
@@ -297,6 +305,7 @@
   </script>
 </body>
 </html>
+
 
 
 
