@@ -146,7 +146,7 @@
       (gltf) => {
         console.log('penguin.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
-        model.traverse(o => console.log(o.name));
+        model.traverse(o => console.log("hello world"+ o.name));
         if (!model) { console.error('penguin.glb: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
@@ -291,6 +291,7 @@
   </script>
 </body>
 </html>
+
 
 
 
