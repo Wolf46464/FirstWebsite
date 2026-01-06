@@ -147,6 +147,7 @@
         console.log('penguin.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
         model.traverse(o => console.log("hello world"+ o.name));
+        propeller = model.getObjectByName('Propeller');
         if (!model) { console.error('penguin.glb: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
@@ -245,9 +246,22 @@
 
     // Animation loop
     function animate() {
+
+
+
+
       requestAnimationFrame(animate);
       const delta = clock.getDelta();
 
+
+      if (propeller) {
+          propeller.rotation.z += 0.3; // adjust axis
+      }
+
+
+
+
+      
       // update mixers
       for (const m of mixers) m.update(delta);
 
@@ -291,6 +305,7 @@
   </script>
 </body>
 </html>
+
 
 
 
