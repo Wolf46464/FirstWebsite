@@ -140,19 +140,19 @@
       controls.update();
     }
 
-    // Load penguin.glb
+    // Load Plane1.glb
     let propeller = null;
     loader.load(
       './Plane1.glb',
       (gltf) => {
-        console.log('penguin.glb loaded', gltf);
+        console.log('Plane1.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
-        model.traverse(o => console.log("hello world"+ o.name));
+        model.traverse(o => console.log("hello world To see all objects"+ o.name));
         propeller = model.getObjectByName('Propeller');
-        if (!model) { console.error('penguin.glb: no scene'); return; }
+        if (!model) { console.error('Plane1.glb: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
-        model.position.set(-0.8, 0, 0);
+        model.position.set(0, 0, 10);
         scene.add(model);
         scene.remove(placeholderPenguin);
 
@@ -306,6 +306,7 @@
   </script>
 </body>
 </html>
+
 
 
 
