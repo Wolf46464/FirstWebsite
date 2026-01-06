@@ -199,7 +199,7 @@
             if (!m) return;
             if (m.map) {
               m.map.wrapS = m.map.wrapT = THREE.RepeatWrapping;
-              m.map.repeat.set(1, 1); // tweak tiling
+              m.map.repeat.set(10, 10); // tweak tiling
               m.map.encoding = THREE.sRGBEncoding;
               m.map.minFilter = THREE.LinearMipMapLinearFilter;
               m.map.magFilter = THREE.LinearFilter;
@@ -218,8 +218,8 @@
             if (!waterMeshes.includes(n)) waterMeshes.push(n);
           }
         });
-        model.scale.set(10,10,10);
-        model.position.set(0.8, 0, 0);
+        model.scale.set(100,100,1);
+        model.position.set(0, 0,-10);
         scene.add(model);
         scene.remove(placeholderWater);
 
@@ -306,6 +306,7 @@
   </script>
 </body>
 </html>
+
 
 
 
