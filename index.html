@@ -256,7 +256,7 @@
 
 
       if (propeller) {
-          propeller.rotation.y += 0.3; // adjust axis
+          propeller.rotation.y += 0.5; // adjust axis
       }
 
 
@@ -268,8 +268,8 @@
 
       // animate water texture offsets for meshes that have a texture map
       if (waterMeshes.length) {
-        const speedX = 0.05;
-        const speedY = 0.02;
+        const speedX = 0.001;
+        const speedY = 0.2;
         for (const mesh of waterMeshes) {
           const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
           for (const mat of mats) {
@@ -306,6 +306,7 @@
   </script>
 </body>
 </html>
+
 
 
 
