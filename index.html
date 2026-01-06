@@ -218,7 +218,7 @@
             if (!waterMeshes.includes(n)) waterMeshes.push(n);
           }
         });
-        model.scale(10,10,10);
+        model.scale.set(10,10,10);
         model.position.set(0.8, 0, 0);
         scene.add(model);
         scene.remove(placeholderWater);
@@ -306,6 +306,7 @@
   </script>
 </body>
 </html>
+
 
 
 
