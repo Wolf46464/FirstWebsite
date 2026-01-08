@@ -141,15 +141,17 @@
     }
 
     // Load Plane1.glb
-    let propeller = null;
+    let Gear1 = null;
+    let Gear2 = null;
     loader.load(
-      './Plane1.glb',
+      './GearTest.glb',
       (gltf) => {
-        console.log('Plane1.glb loaded', gltf);
+        console.log('GearTest.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
         model.traverse(o => console.log("hello world To see all objects"+ o.name));
-        propeller = model.getObjectByName('Propeller');
-        if (!model) { console.error('Plane1.glb: no scene'); return; }
+        Gear1 = model.getObjectByName('Gear1');
+        Gear2 = model.getObjectByName('Gear2');
+        if (!model) { console.error('GearTest: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
         model.position.set(0, 0, 10);
@@ -256,7 +258,8 @@
 
 
       if (propeller) {
-          propeller.rotation.y += 0.5; // adjust axis
+          Gear1.rotation.y += 0.2; // adjust axis
+          Gear2.rotation.x -=0.2;
       }
 
 
@@ -306,6 +309,7 @@
   </script>
 </body>
 </html>
+
 
 
 
