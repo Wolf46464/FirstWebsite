@@ -145,16 +145,36 @@
     let Gear2 = null;
     let Gear3 = null;
     let Gear4 = null;
+    
+    const gearMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff0000,   // red
+      metalness: 0.8,
+      roughness: 0.8
+    });
+    
     loader.load(
       './GearLow3.glb',
       (gltf) => {
         console.log('Loading Gears', gltf);
         const model = gltf.scene || gltf.scenes[0];
+
+
+
+        
         model.traverse(o => console.log("hello world To see all objects"+ o.name));
         Gear1 = model.getObjectByName('Gear1');
         Gear2 = model.getObjectByName('Gear2');
         Gear3 = model.getObjectByName('Gear3');
         Gear4 = model.getObjectByName('Gear4');
+        Gear1.traverse((child) => {
+          if (child.isMesh) {
+              child.material = gearMaterial;
+              child.material.needsUpdate = true;
+      }
+
+
+
+        
         if (!model) { console.error('GearTest: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
@@ -315,6 +335,7 @@
   </script>
 </body>
 </html>
+
 
 
 
