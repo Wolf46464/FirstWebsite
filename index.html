@@ -146,9 +146,9 @@
     let Gear3 = null;
     let Gear4 = null;
     loader.load(
-      './GearTest.glb',
+      './GearLow3.glb',
       (gltf) => {
-        console.log('GearLow3.glb loaded', gltf);
+        console.log('Loading Gears', gltf);
         const model = gltf.scene || gltf.scenes[0];
         model.traverse(o => console.log("hello world To see all objects"+ o.name));
         Gear1 = model.getObjectByName('Gear1');
@@ -311,6 +311,7 @@
   </script>
 </body>
 </html>
+
 
 
 
