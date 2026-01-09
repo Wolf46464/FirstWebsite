@@ -149,10 +149,11 @@
     let Sphere = null;
     
     const gearMaterial = new THREE.MeshStandardMaterial({
-      color: 0xff0300,   // red
+      color: 0xff0300,// red
       emissive: 0x4d0100,
       metalness: 0.8,
-      roughness: 0.2
+      roughness: 0.2,
+      flatShading: false
     });
     const gearMaterial2 = new THREE.MeshStandardMaterial({
       color: 0x0011ff,   // red
@@ -181,7 +182,6 @@
         Sphere.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
-            child.material.flatShading = false;
             child.material.needsUpdate = true;
             }
          });
@@ -196,7 +196,6 @@
                 Gear2.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
-            child.material.flatShading = false;
             child.material.needsUpdate = true;
             }
          });
@@ -376,6 +375,7 @@
   </script>
 </body>
 </html>
+
 
 
 
