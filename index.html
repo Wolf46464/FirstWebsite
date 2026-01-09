@@ -146,7 +146,8 @@
     let Gear3 = null;
     let Gear4 = null;
     let Button = null;
-    let Sphere = null;
+    let Sphere1 = null;
+    let Sphere2 = null;
     
     const gearMaterial = new THREE.MeshStandardMaterial({
       color: 0xff0300,// red
@@ -163,7 +164,7 @@
     });
     
     loader.load(
-      './GearLow5.glb',
+      './GearLow6.glb',
       (gltf) => {
         console.log('Loading Gear number 5!!!', gltf);
         const model = gltf.scene || gltf.scenes[0];
@@ -177,11 +178,19 @@
         Gear3 = model.getObjectByName('Gear3');
         Gear4 = model.getObjectByName('Gear4');
         Button = model.getObjectByName('Button');
-        Sphere = model.getObjectByName('Sphere');
+        Sphere1 = model.getObjectByName('Sphere1');
+        Sphere2 = model.getObjectByName('Sphere2');
         
-        Sphere.traverse((child) => {
+        Sphere1.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
+            child.material.needsUpdate = true;
+            }
+         });
+        
+        Sphere2.traverse((child) => {
+          if (child.isMesh) {
+            child.material = gearMaterial2;
             child.material.needsUpdate = true;
             }
          });
@@ -375,6 +384,7 @@
   </script>
 </body>
 </html>
+
 
 
 
