@@ -151,8 +151,14 @@
     const gearMaterial = new THREE.MeshStandardMaterial({
       color: 0xff0300,   // red
       emissive: 0x4d0100,
-      metalness: 0.0.8,
+      metalness: 0.8,
       roughness: 0.2
+    });
+    const gearMaterial2 = new THREE.MeshStandardMaterial({
+      color: 0x0011ff,   // red
+      emissive: 0x000770,
+      metalness: 0.8,
+      roughness: 0.3
     });
     
     loader.load(
@@ -360,6 +366,7 @@
   </script>
 </body>
 </html>
+
 
 
 
