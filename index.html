@@ -166,13 +166,13 @@
     loader.load(
       './GearLow6.glb',
       (gltf) => {
-        console.log('Loading Gear number 5!!!', gltf);
+        console.log('Loading Gear number 6!!!', gltf);
         const model = gltf.scene || gltf.scenes[0];
 
 
 
         
-        model.traverse(o => console.log("Muumi22 :"+ o.name));
+        model.traverse(o => console.log("YES! :"+ o.name));
         Gear1 = model.getObjectByName('Gear1');
         Gear2 = model.getObjectByName('Gear2');
         Gear3 = model.getObjectByName('Gear3');
@@ -384,6 +384,7 @@
   </script>
 </body>
 </html>
+
 
 
 
