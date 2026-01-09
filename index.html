@@ -143,10 +143,12 @@
     // Load Plane1.glb
     let Gear1 = null;
     let Gear2 = null;
+    let Gear3 = null;
+    let Gear4 = null;
     loader.load(
       './GearTest.glb',
       (gltf) => {
-        console.log('GearTest.glb loaded', gltf);
+        console.log('GearLow3.glb loaded', gltf);
         const model = gltf.scene || gltf.scenes[0];
         model.traverse(o => console.log("hello world To see all objects"+ o.name));
         Gear1 = model.getObjectByName('Gear1');
@@ -309,6 +311,7 @@
   </script>
 </body>
 </html>
+
 
 
 
