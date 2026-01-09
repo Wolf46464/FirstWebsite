@@ -184,6 +184,13 @@
             child.material.needsUpdate = true;
             }
          });
+
+              Gear1.traverse((child) => {
+          if (child.isMesh) {
+            child.material = gearMaterial2;
+            child.material.needsUpdate = true;
+            }
+        
                 Gear2.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
@@ -366,6 +373,7 @@
   </script>
 </body>
 </html>
+
 
 
 
