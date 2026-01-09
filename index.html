@@ -145,6 +145,7 @@
     let Gear2 = null;
     let Gear3 = null;
     let Gear4 = null;
+    let Button = null;
     
     const gearMaterial = new THREE.MeshStandardMaterial({
       color: 0xff0000,   // red
@@ -166,6 +167,7 @@
         Gear2 = model.getObjectByName('Gear2');
         Gear3 = model.getObjectByName('Gear3');
         Gear4 = model.getObjectByName('Gear4');
+        Button = model.getObjectByName('Button');
         
         Gear1.traverse((child) => {
           if (child.isMesh) {
@@ -180,6 +182,12 @@
             }
          });
                 Gear3.traverse((child) => {
+          if (child.isMesh) {
+            child.material = gearMaterial;
+            child.material.needsUpdate = true;
+            }
+         });
+          Button.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
             child.material.needsUpdate = true;
@@ -349,6 +357,7 @@
   </script>
 </body>
 </html>
+
 
 
 
