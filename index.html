@@ -181,6 +181,7 @@
         Sphere.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
+            child.material.flatShading = false;
             child.material.needsUpdate = true;
             }
          });
@@ -195,6 +196,7 @@
                 Gear2.traverse((child) => {
           if (child.isMesh) {
             child.material = gearMaterial;
+            child.material.flatShading = false;
             child.material.needsUpdate = true;
             }
          });
@@ -374,6 +376,7 @@
   </script>
 </body>
 </html>
+
 
 
 
