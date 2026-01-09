@@ -153,6 +153,8 @@
         model.traverse(o => console.log("hello world To see all objects"+ o.name));
         Gear1 = model.getObjectByName('Gear1');
         Gear2 = model.getObjectByName('Gear2');
+        Gear3 = model.getObjectByName('Gear3');
+        Gear4 = model.getObjectByName('Gear4');
         if (!model) { console.error('GearTest: no scene'); return; }
 
         model.traverse((n) => configureMeshMaterialForGLTF(n));
@@ -313,6 +315,7 @@
   </script>
 </body>
 </html>
+
 
 
 
