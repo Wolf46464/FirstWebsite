@@ -166,11 +166,13 @@
         Gear2 = model.getObjectByName('Gear2');
         Gear3 = model.getObjectByName('Gear3');
         Gear4 = model.getObjectByName('Gear4');
+        
         Gear1.traverse((child) => {
           if (child.isMesh) {
-              child.material = gearMaterial;
-              child.material.needsUpdate = true;
-      }
+            child.material = gearMaterial;
+            child.material.needsUpdate = true;
+            }
+         });
 
 
 
@@ -335,6 +337,7 @@
   </script>
 </body>
 </html>
+
 
 
 
